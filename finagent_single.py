@@ -1,0 +1,1338 @@
+"""finagent_single.py — the whole Financial PDF Extraction Agent in one file.
+
+This is a portable, single-file build of the `finagent/` package. Same code,
+flattened into one module so you can drop it anywhere, paste it in a chat, or
+run it without installing a package.
+
+    python finagent_single.py test_pdfs/TCS_2024-2025.pdf
+
+Core idea: accuracy comes from VERIFICATION, not extraction. Financial
+statements are self-verifying (A = L + E, subtotals, cross-statement ties),
+so every value gets proven, not trusted.
+
+Pipeline (each section below is one stage):
+
+    PDF -> profile -> locate -> extract -> normalize -> validate -> derive -> write
+
+Dependencies: pypdf, pdfplumber, rapidfuzz, openpyxl  (see requirements.txt)
+
+The multi-file package in finagent/ is the source of truth. This file is a
+faithful bundle of it — if you edit the package, regenerate or mirror here.
+"""
+import re
+import sys
+import time
+from collections import defaultdict
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from statistics import median
+
+from pypdf import PdfReader
+import pdfplumber
+from rapidfuzz import fuzz
+from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+from openpyxl.styles import Font, PatternFill
+
+
+# =============================================================================
+# SCHEMA  (was finagent/schema.py)
+# The single vocabulary every stage speaks: canonical metric -> statement +
+# label synonyms as they appear across companies. Synonyms are matched fuzzily.
+# Statement codes: PL = profit & loss, BS = balance sheet, CF = cash flow.
+# =============================================================================
+METRICS = {
+    # ---------------- Profit & Loss ----------------
+    "revenue": {
+        "statement": "PL",
+        # "interest earned" is the bank revenue line (Schedule III P&L)
+        "synonyms": ["revenue from operations", "net sales", "income from operations",
+                     "total revenues", "revenue", "sales", "turnover",
+                     "interest earned"],
+    },
+    "other_income": {
+        "statement": "PL",
+        "synonyms": ["other income", "other operating income"],
+    },
+    "total_income": {
+        "statement": "PL",
+        "synonyms": ["total income", "total revenue"],
+    },
+    "total_expenses": {
+        "statement": "PL",
+        "synonyms": ["total expenses", "total expenditure", "total costs and expenses"],
+    },
+    "employee_costs": {
+        "statement": "PL",
+        "synonyms": ["employee benefit expenses", "employee benefits expense",
+                     "staff costs", "personnel expenses"],
+    },
+    "depreciation": {
+        "statement": "PL",
+        "synonyms": ["depreciation and amortisation expense", "depreciation and amortization",
+                     "depreciation, amortisation and impairment",
+                     "depreciation amortisation and depletion expense"],
+    },
+    "finance_costs": {
+        "statement": "PL",
+        "synonyms": ["finance costs", "finance cost", "interest expense", "borrowing costs"],
+    },
+    "profit_before_tax": {
+        "statement": "PL",
+        "synonyms": ["profit before tax", "profit before income tax", "income before income taxes",
+                     "profit/(loss) before tax", "earnings before tax"],
+    },
+    "tax_expense": {
+        "statement": "PL",
+        "synonyms": ["total tax expense", "tax expense", "income tax expense",
+                     "provision for taxation", "income taxes"],
+    },
+    "net_profit": {
+        "statement": "PL",
+        # bank P&L wording: the before-minority-interest line is the total
+        # profit (incl. NCI), matching the "profit for the year" convention
+        "synonyms": ["profit for the year", "net profit", "profit after tax", "net income",
+                     "profit/(loss) for the year", "profit for the period",
+                     "net profit/loss",
+                     "net profit for the year before minority interest",
+                     "profit after tax for the year"],
+    },
+    "total_comprehensive_income": {
+        "statement": "PL",
+        "synonyms": ["total comprehensive income for the year", "total comprehensive income"],
+    },
+    "eps_basic": {
+        "statement": "PL",
+        "synonyms": ["basic earnings per share", "basic eps", "earnings per share basic",
+                     "basic (in rupees)", "basic (rs.)",
+                     "earnings per equity share basic",
+                     # combined line when basic == diluted (TCS); EU wording (BMW)
+                     "earnings per equity share basic and diluted",
+                     "basic earnings per ordinary share in eur",
+                     # power-sector wording (rate-regulated entities), as
+                     # truncated by the line wrap; the "before net movement"
+                     # twin is vetoed by the before/after directional guard
+                     "basic / diluted earnings per equity share after net movement"],
+    },
+
+    # ---------------- Balance Sheet ----------------
+    "total_assets": {
+        "statement": "BS",
+        "synonyms": ["total assets"],
+    },
+    "non_current_assets": {
+        "statement": "BS",
+        "synonyms": ["total non-current assets", "total non current assets",
+                     "non-current assets"],
+    },
+    "current_assets": {
+        "statement": "BS",
+        "synonyms": ["total current assets", "current assets"],
+    },
+    # side: these labels recur verbatim under BOTH BS sections; the metric
+    # means the CURRENT-side row (extractor stamps rows with their section)
+    "inventories": {
+        "statement": "BS",
+        "side": "current",
+        "synonyms": ["inventories", "inventory"],
+    },
+    "trade_receivables": {
+        "statement": "BS",
+        "side": "current",
+        "synonyms": ["trade receivables", "accounts receivable", "sundry debtors"],
+    },
+    "cash_and_equivalents": {
+        "statement": "BS",
+        "side": "current",
+        "synonyms": ["cash and cash equivalents", "cash and bank balances"],
+    },
+    "total_equity": {
+        "statement": "BS",
+        "synonyms": ["total equity", "total shareholders' equity", "shareholders' funds",
+                     "equity attributable to owners", "equity"],
+    },
+    "non_current_liabilities": {
+        "statement": "BS",
+        "synonyms": ["total non-current liabilities", "total non current liabilities",
+                     "non-current provisions and liabilities"],
+    },
+    "current_liabilities": {
+        "statement": "BS",
+        "synonyms": ["total current liabilities",
+                     "current provisions and liabilities"],
+    },
+    "total_liabilities": {
+        "statement": "BS",
+        "synonyms": ["total liabilities"],
+    },
+    "total_equity_and_liabilities": {
+        "statement": "BS",
+        # "capital and liabilities" is the bank BS section (Schedule III)
+        "synonyms": ["total equity and liabilities", "total liabilities and equity",
+                     "total liabilities and shareholders' equity",
+                     "total capital and liabilities"],
+    },
+
+    # ---------------- Cash Flow ----------------
+    "cash_from_operations": {
+        "statement": "CF",
+        # NOTE: "cash generated from operations" is deliberately absent —
+        # it's the PRE-TAX subtotal (golden check caught it on Reliance,
+        # Adani and Newgen); only "net …" totals belong here
+        "synonyms": ["net cash generated from operating activities",
+                     "net cash from operating activities",
+                     "net cash flow from operating activities",
+                     "cash inflow/outflow from operating activities"],
+    },
+    "cash_from_investing": {
+        "statement": "CF",
+        "synonyms": ["net cash used in investing activities",
+                     "net cash from investing activities",
+                     "net cash flow from investing activities",
+                     "cash inflow/outflow from investing activities",
+                     "net cash flows generated from investing activities",
+                     "net cash generated from investing activities"],
+    },
+    "cash_from_financing": {
+        "statement": "CF",
+        "synonyms": ["net cash used in financing activities",
+                     "net cash from financing activities",
+                     "net cash flow from financing activities",
+                     "cash inflow/outflow from financing activities",
+                     "net cash flows generated from financing activities",
+                     "net cash generated from financing activities"],
+    },
+    "net_change_in_cash": {
+        "statement": "CF",
+        "synonyms": ["net increase/(decrease) in cash and cash equivalents",
+                     "net increase in cash and cash equivalents",
+                     "net change in cash and cash equivalents",
+                     "net decrease in cash and cash equivalents",
+                     "net increase in cash and cash equivalents during the year"],
+    },
+    "fx_effect_on_cash": {
+        "statement": "CF",
+        "optional": True,   # only multinationals report it; feeds the
+                            # cash-flow identity, never counted as MISSING
+        "synonyms": ["effect of exchange rate on cash and cash equivalents",
+                     "effect of exchange rate changes on cash and cash equivalents",
+                     "effects of exchange rate changes on cash and cash equivalents",
+                     "exchange differences on cash and cash equivalents",
+                     "effect of exchange differences on cash and cash equivalents",
+                     "effect of fluctuation in foreign currency translation reserve",
+                     "exchange difference on translation of foreign currency cash and cash equivalents"],
+    },
+    "closing_cash": {
+        "statement": "CF",
+        "synonyms": ["cash and cash equivalents at the end of the year",
+                     "cash and cash equivalents at end of the period",
+                     "closing cash and cash equivalents",
+                     "cash and cash equivalents as at the end of the year",
+                     "cash and cash equivalents as at december",
+                     "closing balance of cash and cash equivalents"],
+    },
+}
+
+ALL_METRICS = list(METRICS)
+EXPECTED_METRICS = [m for m, d in METRICS.items() if not d.get("optional")]
+
+
+def metrics_for_statement(code):
+    return [m for m, d in METRICS.items() if d["statement"] == code]
+
+
+# =============================================================================
+# STAGE 1 — PROFILE  (was finagent/profiler.py)
+# What kind of PDF is this, page by page? Uses pypdf (fast) for the full-doc
+# pass; pdfplumber is reserved for the few pages we actually extract from.
+# =============================================================================
+@dataclass
+class PageProfile:
+    index: int                # 0-based
+    width: float
+    height: float
+    landscape: bool
+    text: str                 # raw extracted text (kept for the locator)
+    text_quality: str         # OK / SUSPECT / EMPTY
+
+
+@dataclass
+class DocProfile:
+    path: str
+    n_pages: int
+    pages: list = field(default_factory=list)
+
+    @property
+    def landscape_ratio(self):
+        return sum(p.landscape for p in self.pages) / max(self.n_pages, 1)
+
+    def summary(self):
+        q = {}
+        for p in self.pages:
+            q[p.text_quality] = q.get(p.text_quality, 0) + 1
+        return {"pages": self.n_pages, "landscape_ratio": round(self.landscape_ratio, 2),
+                "text_quality": q}
+
+
+def _quality(text):
+    if not text or len(text.strip()) < 50:
+        return "EMPTY"
+    alpha = sum(len(w) for w in re.findall(r"[A-Za-z]{3,}", text))
+    return "OK" if alpha / max(len(text), 1) > 0.3 else "SUSPECT"
+
+
+def profile(pdf_path):
+    reader = PdfReader(pdf_path)
+    doc = DocProfile(path=str(pdf_path), n_pages=len(reader.pages))
+    for i, page in enumerate(reader.pages):
+        box = page.mediabox
+        w, h = float(box.width), float(box.height)
+        rotation = page.get("/Rotate") or 0
+        if rotation in (90, 270):
+            w, h = h, w
+        try:
+            text = page.extract_text() or ""
+        except Exception:
+            text = ""
+        doc.pages.append(PageProfile(
+            index=i, width=w, height=h, landscape=w > h,
+            text=text, text_quality=_quality(text),
+        ))
+    return doc
+
+
+# =============================================================================
+# STAGE 2 — GEOMETRY  (was finagent/geometry.py)
+# Turn messy physical pages into clean logical pages. Annual reports often
+# print two logical pages side by side on one landscape sheet (A3 two-up:
+# Airtel, Reliance). We find the gutter and split the words into two pages.
+# A true single-page landscape table (BMW) must NOT be split — the gutter
+# test is conservative.
+# =============================================================================
+GUTTER_BINS = 200          # x-axis resolution for the coverage histogram
+SEARCH_LO, SEARCH_HI = 0.35, 0.65   # look for the gutter in the middle third
+MAX_GUTTER_COVERAGE = 0.01  # words allowed to touch the gutter band
+MIN_SIDE_RATIO = 0.2        # both halves must carry real text
+
+
+def _gutter_x(page_width, words):
+    """X position of the spine: the near-empty vertical band CLOSEST TO THE
+    CENTRE (not the emptiest one — a table's gap between its label column
+    and its number columns is often emptier than the true spine)."""
+    cover = [0] * GUTTER_BINS
+    for w in words:
+        a = max(int(w["x0"] / page_width * GUTTER_BINS), 0)
+        b = min(int(w["x1"] / page_width * GUTTER_BINS), GUTTER_BINS - 1)
+        for i in range(a, b + 1):
+            cover[i] += 1
+    lo, hi = int(GUTTER_BINS * SEARCH_LO), int(GUTTER_BINS * SEARCH_HI)
+    threshold = max(1, MAX_GUTTER_COVERAGE * len(words))
+    candidates = [i for i in range(lo, hi) if cover[i] <= threshold]
+    if not candidates:
+        return None
+    centre = GUTTER_BINS / 2
+    best = min(candidates, key=lambda i: abs(i + 0.5 - centre))
+    return (best + 0.5) / GUTTER_BINS * page_width
+
+
+def split_two_up(page, words):
+    """Return (left_words, right_words) if the page is two-up, else None."""
+    if page.width <= page.height or len(words) < 20:
+        return None
+    gx = _gutter_x(page.width, words)
+    if gx is None:
+        return None
+    left = [w for w in words if (w["x0"] + w["x1"]) / 2 <= gx]
+    right = [w for w in words if (w["x0"] + w["x1"]) / 2 > gx]
+    if min(len(left), len(right)) < MIN_SIDE_RATIO * max(len(left), len(right), 1):
+        return None  # one side nearly empty: a wide table, not two pages
+    for side in (left, right):
+        alpha = sum(1 for w in side if any(c.isalpha() for c in w["text"]))
+        if alpha < 0.3 * len(side):
+            return None  # a side that is mostly numbers is a value-column
+                         # block of one wide table, not a logical page
+    return left, right
+
+
+def logical_pages(page, words):
+    """One physical page -> list of logical word groups (1 or 2)."""
+    halves = split_two_up(page, words)
+    return list(halves) if halves else [words]
+
+
+# =============================================================================
+# STAGE 3 — LOCATE  (was finagent/locator.py)
+# Find and classify the statement pages. Keyword scoring over the profiler's
+# per-page text. For each statement type we want the CONSOLIDATED version;
+# fall back to standalone if the document has none.
+# =============================================================================
+# What counts as a "money figure" when deciding a page carries a real
+# statement (not a ToC mention). Two shapes: a long comma-grouped integer
+# ("1,58,788") OR a decimal figure with two places ("8207.65"). The decimal
+# shape is essential for reports printed in crore, where consolidated line
+# items are small 4-digit decimals that the comma-grouped pattern misses
+# entirely — BHEL's whole P&L scored 0 on the integer-only count.
+NUM_RE = re.compile(r"\d[\d,]{4,}|\d[\d,]*\.\d{2}\b")
+
+# (title patterns, content cue patterns) — title hits score heavily,
+# cues confirm we're on the statement itself rather than a ToC mention.
+STATEMENT_SIGNATURES = {
+    "BS": (
+        [r"balance sheet", r"statement of financial position"],
+        # second row: bank wording (Banking Regulation Act Schedule III) —
+        # banks print Capital and Liabilities / Deposits / Advances with no
+        # current/non-current split, so corporate cues never fire
+        [r"total assets", r"equity and liabilities", r"total equity",
+         r"non[- ]current assets", r"current liabilities",
+         r"capital and liabilities", r"reserves and surplus",
+         r"\bdeposits\b", r"\badvances\b", r"\bborrowings\b"],
+    ),
+    "PL": (
+        # "profit AND loss" is Indian GAAP wording; IFRS reports (Singapore,
+        # EU) title the same statement "profit OR loss" / "comprehensive income"
+        [r"statement of profit (?:and|or) loss", r"income statement",
+         r"statement of (?:operations|income)", r"profit and loss account",
+         r"statement of comprehensive income"],
+        [r"revenue from operations", r"total income", r"profit before tax",
+         r"earnings per (?:equity )?share", r"total expenses",
+         r"gross profit", r"cost of sales", r"profit for the year",
+         r"income tax expense"],
+    ),
+    "CF": (
+        [r"(?:statement of )?cash flows?", r"cash flow statement"],
+        [r"operating activities", r"investing activities", r"financing activities"],
+    ),
+}
+
+
+@dataclass
+class Location:
+    statement: str       # BS / PL / CF
+    basis: str           # consolidated / standalone / unknown
+    page_indices: list   # 0-based, best first
+    score: float
+
+
+def _loc_search(pat, text):
+    """re.search with a kerning-tolerant fallback: PDF text layers sometimes
+    split a word internally ("BAL ANCE SHEET"), so retry with the pattern's
+    literal spaces removed against space-collapsed text."""
+    return (re.search(pat, text)
+            or re.search(pat.replace(" ", ""), text.replace(" ", "")))
+
+
+def _is_heading(line, title_pats):
+    """True if `line` is a statement HEADING (the title phrase starts at its
+    head, after at most a 2-word basis/company prefix) rather than a prose
+    mention that merely contains the phrase. Kerning-split titles ("BAL ANCE
+    SHEET") count as headings — they only arise on real heading lines."""
+    for p in title_pats:
+        m = re.search(p, line)
+        if m:
+            if len(line[:m.start()].split()) <= 2:
+                return True
+        elif re.search(p.replace(" ", ""), line.replace(" ", "")):
+            return True
+    return False
+
+
+def _score_page(text, title_pats, cue_pats):
+    t = text.lower()
+    title = sum(3 for p in title_pats if _loc_search(p, t))
+    cues = sum(1 for p in cue_pats if re.search(p, t))
+    if title == 0 or cues < 2:
+        return 0, "unknown", False
+    # ToC pages mention many statements but have few numbers
+    numbers = len(NUM_RE.findall(t))
+    if numbers < 8:
+        return 0, "unknown", False
+    # a real statement carries its title as a top-of-page heading; commentary
+    # pages (management report) merely mention the statement in prose
+    head_lines = [ln.strip() for ln in t.strip().splitlines()[:6] if ln.strip()]
+    # a TITLE is a heading line whose statement phrase sits at the HEAD of the
+    # line, optionally after a short basis/company prefix ("Standalone Balance
+    # Sheet", "BMW AG Balance Sheet", "Balance Sheet for Group and Segments at
+    # 31 December 2025"). A prose sentence buries the phrase mid-line
+    # ("Provisions are reviewed at each balance sheet date ..." on a notes
+    # page) — that is NOT a title. Without this guard a notes sentence becomes
+    # a fake heading, takes the +5 boost and a basis stamp, and outranks the
+    # real statement. Length alone fails (dated titles run to ~10 words);
+    # position is the discriminator: phrase must start within the first 2 words.
+    title_line = next((ln for ln in head_lines
+                       if _is_heading(ln, title_pats)), None)
+    # "Condensed/Summarised X" headings are management-report summaries,
+    # not the statement itself — no heading boost, no basis authority
+    if title_line and re.search(r"condensed|summaris|summariz|abridged",
+                                title_line):
+        title_line = None
+    # real statements show two comparative periods (IAS 1); a page parading
+    # many distinct years is a ten-year/multi-year overview. Heading-titled
+    # pages get slack — footnotes legitimately cite years (Airtel's spectrum
+    # auction list) — pages without a true heading do not
+    years = {m for m in re.findall(r"\b(?:19|20)\d{2}\b", t)}
+    if len(years) >= (10 if title_line else 6):
+        return 0, "unknown", False
+    if title_line:
+        title += 5
+    # the title line declares the basis ("Consolidated Balance Sheet",
+    # German "for Group and Segments"); whole-page text is only a fallback —
+    # running headers/prose mentioning "group"/"consolidated" must not count
+    basis = "unknown"
+    if title_line and re.search(r"consolidated|\bgroup\b", title_line):
+        basis = "consolidated"
+    elif title_line and re.search(r"standalone|\bseparate\b", title_line):
+        basis = "standalone"
+    elif "consolidated" in t:
+        basis = "consolidated"
+    elif "standalone" in t or "separate financial" in t:
+        basis = "standalone"
+    return title + cues + min(numbers, 30) * 0.1, basis, bool(title_line)
+
+
+def locate(doc_profile):
+    """Return {statement_code: Location} for BS, PL, CF."""
+    results = {}
+    for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
+        scored = []  # (score, basis, heading, index)
+        for p in doc_profile.pages:
+            if p.text_quality == "EMPTY":
+                continue
+            s, basis, heading = _score_page(p.text, title_pats, cue_pats)
+            if s > 0:
+                scored.append((s, basis, heading, p.index))
+        if not scored:
+            results[code] = Location(code, "unknown", [], 0)
+            continue
+        # heading-titled pages are real statements; pages that merely
+        # discuss the statement (notes, management report) rank below them —
+        # a notes page saying "consolidated" must not hijack the basis pool
+        headed = [x for x in scored if x[2]]
+        pool = headed or scored
+        # prefer consolidated pages within the tier, if any exist
+        consolidated = [x for x in pool if x[1] == "consolidated"]
+        pool = consolidated or pool
+        # ties go to the EARLIER page: the statement itself precedes the
+        # notes/SOCIE pages that echo its keywords
+        pool.sort(key=lambda x: (-x[0], x[3]))
+        score, basis, _, best = pool[0]
+        # Statements may continue on a neighbouring page (which lacks the
+        # title there). Only adjacent pages qualify — a distant page that
+        # also scores is a DIFFERENT copy of the statement (standalone,
+        # prior period, summary) and mixing it corrupts the metric set.
+        pages = [best]
+        for nb in (best - 1, best + 1):
+            if 0 <= nb < doc_profile.n_pages and _is_continuation(
+                    doc_profile.pages[nb].text, cue_pats):
+                pages.append(nb)
+        results[code] = Location(code, basis, pages, score)
+    return results
+
+
+def _is_continuation(text, cue_pats):
+    t = text.lower()
+    cues = sum(1 for p in cue_pats if re.search(p, t))
+    numbers = len(NUM_RE.findall(t))
+    return cues >= 1 and numbers >= 8
+
+
+# =============================================================================
+# STAGE 4 — EXTRACT  (was finagent/extractors/geometric.py)
+# Geometric, line-based extraction with pdfplumber. Financial statements are
+# usually borderless, so instead of table detection we reconstruct text lines
+# from word coordinates and parse each as "label ... numbers". Output is raw:
+# RawItem(label, value_strings, page); parsing the numbers is the normalizer.
+# =============================================================================
+# tokens that look like report numbers: 1,49,982.45  (1,234)  123.45  -
+NUM_CHARS = set("0123456789,().%-−–—")
+
+# European reports render negatives as a DETACHED minus: "− 112,858" is two
+# words. Only unicode minuses get merged — a standalone ASCII "-" is a nil
+# placeholder in Indian reports and must stay a separate token.
+MINUS_TOKENS = {"−", "–", "—"}
+
+# a real sign hugs its number; a nil placeholder ("−" meaning zero) sits in
+# its own column, far from the next number
+MAX_SIGN_GAP = 4.0
+
+# standalone dashes are nil values: part of a row's numeric tail
+PLACEHOLDER_TOKENS = {"-", "−", "–", "—"}
+
+
+@dataclass
+class RawItem:
+    label: str
+    values: list      # raw strings, left to right
+    page: int         # 0-based physical page
+    source: str = "geometric"
+    side: str = None  # current / non-current, from the enclosing BS section
+
+
+def _is_numeric_token(tok):
+    t = tok.strip()
+    if not t or not any(c.isdigit() for c in t):
+        return False
+    return all(c in NUM_CHARS for c in t)
+
+
+def _merge_detached_minus(line):
+    """x0-sorted words -> token strings, gluing a detached minus onto the
+    number it signs. Distance decides sign vs nil placeholder."""
+    out, i = [], 0
+    while i < len(line):
+        w = line[i]
+        if (w["text"] in MINUS_TOKENS and i + 1 < len(line)
+                and _is_numeric_token(line[i + 1]["text"])
+                and line[i + 1]["x0"] - w["x1"] <= MAX_SIGN_GAP):
+            out.append("-" + line[i + 1]["text"])
+            i += 2
+        else:
+            out.append(w["text"])
+            i += 1
+    return out
+
+
+def _lines_from_words(words, y_tol=2.5):
+    """Group words into visual lines by their vertical position."""
+    lines = []
+    for w in sorted(words, key=lambda w: (w["top"], w["x0"])):
+        if lines and abs(w["top"] - lines[-1][-1]["top"]) <= y_tol:
+            lines[-1].append(w)
+        else:
+            lines.append([w])
+    return lines
+
+
+def _items_from_words(words, page_index):
+    items = []
+    section = None
+    side = None   # current / non-current: duplicate labels ("- Trade
+                  # receivables") appear under both BS sections
+    side_heading = None   # text of the line that set the side; an
+                          # UNLABELED numeric row ENDING its block is the
+                          # section subtotal (Airtel prints "4,467,716
+                          # 3,862,549" with no label at all)
+    pending = None        # candidate subtotal: only real if no labeled row
+                          # follows it before the block closes (a subtotal
+                          # is the LAST row of its section, so a mid-block
+                          # orphan from a wrapped label is discarded)
+    prev_text = None      # immediately-preceding text-only line: a numeric
+                          # row whose label starts lowercase is its WRAPPED
+                          # continuation ("Profit for the year, representing
+                          # total" + "comprehensive income ... 419,056")
+
+    def flush_pending():
+        nonlocal pending
+        if pending:
+            items.append(pending)
+            pending = None
+
+    for line in _lines_from_words(words):
+        line.sort(key=lambda w: w["x0"])
+        toks = _merge_detached_minus(line)
+        # split into label prefix and trailing numeric tokens; nil
+        # placeholders are tail members, not label text
+        split = len(toks)
+        for i in range(len(toks) - 1, -1, -1):
+            if _is_numeric_token(toks[i]) or toks[i] in PLACEHOLDER_TOKENS:
+                split = i
+            else:
+                break
+        label = " ".join(toks[:split]).strip()
+        nums = toks[split:]
+        # a parenthetical can split across the boundary: "... (refer note"
+        # | "15)" — the closing fragment looks numeric and would become the
+        # value (closing_cash = 15!). Re-join it into the label.
+        while (label.count("(") > label.count(")") and nums
+               and re.fullmatch(r"[^()]*\)", nums[0])):
+            label = f"{label} {nums.pop(0)}"
+        if label and nums:
+            if prev_text and label[:1].islower():
+                label = f"{prev_text} {label}"
+            prev_text = None
+            # bank/RBI-format statements label section totals just "Total"
+            # (and EPS rows just "Basic"/"Diluted" under their heading);
+            # qualify with the section heading ("ASSETS" -> "total assets")
+            # so the normalizer can match it. A misattributed section simply
+            # fails the fuzzy threshold and the row stays unmatched.
+            if section and re.fullmatch(r"(total|basic|diluted):?", label,
+                                        re.IGNORECASE):
+                label = f"{label.rstrip(':')} {section}"
+            # a total-ish row ("TOTAL LIABILITIES", "NET CURRENT ASSETS")
+            # closes the block — totals FOLLOW subtotals, so a pending
+            # unlabeled row right before it IS the subtotal (Wilmar).
+            # Any other labeled row means the pending row wasn't the
+            # block's last — a wrapped-label orphan, discarded.
+            if re.match(r"(total|net)\b", label, re.IGNORECASE):
+                flush_pending()
+            else:
+                pending = None
+            if re.match(r"total\b", label, re.IGNORECASE):
+                side_heading = None
+            items.append(RawItem(label=label, values=nums, page=page_index,
+                                 side=side))
+        elif nums and side_heading:
+            prev_text = None
+            # unlabeled numeric row inside a current/non-current block:
+            # candidate subtotal (last one wins). A wrong synthesis either
+            # fails the fuzzy gate (absence), loses the first-wins tie to
+            # the real row, or breaks a composition identity (FLAGGED).
+            pending = RawItem(label=f"total {side_heading}", values=nums,
+                              page=page_index, side=side)
+        elif label:
+            flush_pending()   # a heading closes the block: the pending
+                              # unlabeled row WAS its last row = subtotal
+            prev_text = label
+            # a text-only line is a section heading candidate; strip leading
+            # roman/decimal numbering ("I. INCOME" -> "income") and heading
+            # parentheticals, which are unit/face-value noise ("EARNINGS PER
+            # EQUITY SHARE (Face value 1/- per share)")
+            section = re.sub(r"^[\divxlc]+[.)]\s*", "",
+                             re.sub(r"\([^)]*\)", " ", label.lower())).strip()
+            # "non-current" contains "current": test it first. Headings that
+            # mention neither leave the side untouched ("Financial assets").
+            if re.search(r"non[- ]current", section):
+                side = "non-current"
+                side_heading = section
+            elif "current" in section:
+                side = "current"
+                side_heading = section
+    flush_pending()
+    return items
+
+
+def _matches_statement(words, cue_pats):
+    """Does this logical half belong to the statement we were sent to?
+
+    Threshold is 1 cue, not 2: the locator already vouched for the page, so
+    the half-picker only needs to drop the OTHER statement sharing an A3
+    two-up sheet. A statement can SPAN both halves (Airtel CF: financing
+    section alone on the right half, exactly 1 cue) — requiring 2 cues
+    silently discarded it."""
+    text = " ".join(w["text"] for w in words).lower()
+    return sum(1 for p in cue_pats if re.search(p, text)) >= 1
+
+
+def extract(pdf_path, page_indices, cue_pats=None):
+    """Extract raw line items from the given 0-based physical pages.
+
+    cue_pats: content cues of the target statement. Used only to pick the
+    right half of a split two-up page; if no half matches, keep all (the
+    normalizer's allowed-metrics filter is the second line of defence).
+    """
+    items = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for idx in page_indices:
+            if not (0 <= idx < len(pdf.pages)):
+                continue
+            page = pdf.pages[idx]
+            words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+            # rotated words are page furniture (vertical "Financial
+            # Statements" tabs) that share a y-band with table rows and
+            # break the numeric-tail scan. On a landscape page EVERYTHING
+            # is rotated — there the filter must stand down.
+            upright = [w for w in words if w.get("upright", True)]
+            if len(upright) >= len(words) / 2:
+                words = upright
+            logical = logical_pages(page, words)
+            if len(logical) > 1 and cue_pats:
+                matching = [g for g in logical if _matches_statement(g, cue_pats)]
+                logical = matching or logical
+            for group in logical:
+                items.extend(_items_from_words(group, idx))
+    return items
+
+
+# =============================================================================
+# STAGE 5 — NORMALIZE  (was finagent/normalizer.py)
+# Turn raw line items into canonical metrics: parse number strings, drop
+# note-reference columns, fuzzy-match label text to the schema.
+# =============================================================================
+MATCH_THRESHOLD = 88
+
+
+@dataclass
+class Extraction:
+    metric: str
+    value: float
+    raw_label: str
+    page: int
+    source: str
+    score: float
+    extra_values: list  # remaining columns (usually prior year)
+
+
+def parse_number(tok):
+    """'(1,234.5)' -> -1234.5 ; '1,49,982' -> 149982.0 ; '-' -> None"""
+    t = tok.strip().rstrip("*#†")
+    t = t.replace("−", "-").replace("–", "-").replace("—", "-")
+    if not t or not any(c.isdigit() for c in t):
+        return None
+    neg = t.startswith("(") and t.endswith(")")
+    t = t.strip("()").replace(",", "").replace("%", "").strip()
+    if t.startswith("-"):
+        neg, t = True, t[1:]
+    try:
+        v = float(t)
+    except ValueError:
+        return None
+    return -v if neg else v
+
+
+def _looks_like_note_ref(tok, rest, label=""):
+    """A bare small integer in the first numeric slot is a note-reference
+    column, even when it is the ONLY number (a split table can leave the
+    note ref behind while the value columns land elsewhere — taking it as
+    the value would yield revenue=25). Real values carry commas, decimals,
+    parens, or more digits."""
+    # if the note ref was consumed into the label ("Inventories 10(e)"),
+    # the first numeric token IS the value — dropping it took prior-year 28
+    # over golden 21 (TCS)
+    if re.search(r"\d[a-z()]*\s*$", label):
+        return False
+    t = tok.strip()
+    if re.fullmatch(r"\d{1,2}", t):
+        return True
+    # a 3-digit bare int is usually a value, not a note number (Airtel fx
+    # effect 718); treat as note ref only with the ~100x jump a real
+    # label->note->value row shows
+    if re.fullmatch(r"\d{3}", t) and rest:
+        nxt = parse_number(rest[0])
+        return nxt is not None and abs(nxt) >= 100 * float(t)
+    # decimal note refs exist too (Adani numbers notes "5.5"); only a note
+    # ref when the next value is orders of magnitude larger — an EPS of
+    # 8.05 followed by prior-year 10.20 must survive
+    if re.fullmatch(r"\d{1,2}\.\d{1,2}", t) and rest:
+        nxt = parse_number(rest[0])
+        return nxt is not None and abs(nxt) >= 100 * float(t)
+    return False
+
+
+def _looks_like_page_ref(tok, nxt):
+    """A SECOND leading reference column. Some statements (BHEL) print both a
+    Note column AND a Page cross-ref column before the values:
+    "Inventories | 10 | 289 | 9,869.49". The note ref (10) is stripped first;
+    289 is the page where the note lives, not a value. The 3-digit jump rule in
+    _looks_like_note_ref can't catch it (289 -> 9,869 is only ~34x), so it would
+    be taken as inventories=289. Safe signature: only fires once a note ref has
+    already been stripped (single-reference tables never reach here), the token
+    is a bare 1-3 digit integer, and a real money figure (comma or decimal)
+    follows it — a page ref always precedes the value columns."""
+    t = tok.strip()
+    if not re.fullmatch(r"\d{1,3}", t):
+        return False
+    n = (nxt or "").strip()
+    return bool(re.search(r"[.,]", n)) and parse_number(n) is not None
+
+
+# sign/unit/reference qualifiers carry no identity — "/(loss)", "/loss",
+# "(used in)", "(decrease)", "(in rupees)", "(note 24)", "(net of refunds)" —
+# and are stripped from labels AND synonyms alike. Classification qualifiers
+# ("(non-current)", "(current)") DO carry identity and must survive: stripping
+# them once let the non-current line shadow the real value (TCS/Adani/Airtel
+# golden WRONGs), because both then clean to the same string and the
+# non-current section comes first.
+# bare "(net)" is NOT a qualifier here: stripping it turned "Current tax
+# liabilities (net)" into a 92-score match for total current liabilities
+_QUALIFIER = (r"(?:loss(?:es)?|decrease|used in|in rupees|rs\.?|"
+              r"net of [^)]*|refer[^)]*|notes?\s*[\d., ]*|continued|"
+              r"face value[^)]*|"          # (Face Value of Rs 10 each)
+              r"[a-z](?:\s*\+\s*[a-z])*)")  # cross-refs: (a), (a+b+c)
+
+
+def clean_label(label):
+    t = label.lower()
+    t = re.sub(rf"/\s*\(?{_QUALIFIER}\)?(?=[\s)]|$)", " ", t)  # /(loss), /loss
+    t = re.sub(rf"\(\s*{_QUALIFIER}\s*\)", " ", t)             # (used in)
+    t = re.sub(r"^[\divxlc]+[.)]\s*", "", t)          # leading numbering: 1. / (iv)
+    # fully-parenthesized enumerators: "(ii) Trade Receivables", "(a) …"
+    t = re.sub(r"^\((?:[ivxlc]{1,4}|[a-z]|\d{1,2})\)\s*", "", t)
+    # a LEADING basis word is page-level info the locator already resolved
+    # ("Consolidated Net Profit for the year..."), not label identity
+    t = re.sub(r"^(?:consolidated|standalone)\s+", "", t)
+    t = re.sub(r"[^a-z()/'& -]", " ", t)              # drop stray digits/symbols
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _cleaned_synonyms():
+    return {metric: sorted({clean_label(s) for s in spec["synonyms"]})
+            for metric, spec in METRICS.items()}
+
+
+CLEANED_SYNONYMS = _cleaned_synonyms()
+
+
+def match_label(label):
+    """Return (metric, score) or (None, 0)."""
+    t = clean_label(label)
+    if len(t) < 3:
+        return None, 0
+    best, best_score, best_syn = None, 0, ""
+    for metric, syns in CLEANED_SYNONYMS.items():
+        for syn in syns:
+            s = fuzz.token_sort_ratio(t, syn)
+            if s > best_score:
+                best, best_score, best_syn = metric, s, syn
+    if best_score >= MATCH_THRESHOLD:
+        # an "Other …" line is a residual, not the total it resembles:
+        # "Other current liabilities" must not satisfy current_liabilities
+        if t.startswith("other ") and "other" not in best_syn:
+            return None, 0
+        # directional qualifiers are identity, not noise: "net profit AFTER
+        # minority interest" scores 92 against the "... BEFORE minority
+        # interest" synonym — a one-token swap the threshold can't separate
+        lt, st = set(t.split()), set(best_syn.split())
+        if ({"before", "after"} & lt) and ({"before", "after"} & st) \
+                and ("before" in lt) != ("before" in st):
+            return None, 0
+        return best, best_score
+    return None, 0
+
+
+def _label_matches(label):
+    """All (metric, score) readings of a label. An appositive label —
+    "Profit for the year, representing total comprehensive income for the
+    year" (Newgen) — names the SAME number twice; both parts are matched
+    so one line can satisfy two metrics."""
+    t = clean_label(label)
+    if " representing " in t:
+        parts = [match_label(p) for p in t.split(" representing ")]
+        matches = [(m, s) for m, s in parts if m]
+        if matches:
+            return matches
+    m, s = match_label(label)
+    return [(m, s)] if m else []
+
+
+def normalize(raw_items, allowed_metrics=None):
+    """RawItems -> best Extraction per canonical metric."""
+    by_metric = {}
+    for item in raw_items:
+        for metric, score in _label_matches(item.label):
+            if allowed_metrics is not None and metric not in allowed_metrics:
+                continue
+            # duplicate labels under both BS sections ("- Trade
+            # receivables"): a current-side metric must not take the
+            # non-current section's row. A wrong veto degrades to MISSING,
+            # never to a wrong value.
+            want_side = METRICS[metric].get("side")
+            if want_side and getattr(item, "side", None) not in (None, want_side):
+                continue
+            toks = list(item.values)
+            note_stripped = False
+            if toks and _looks_like_note_ref(toks[0], toks[1:], item.label):
+                toks = toks[1:]
+                note_stripped = True
+            # second reference column: a Page cross-ref (Note + Page columns,
+            # BHEL). Only after a note ref was stripped — the double-column
+            # signature — so single-reference statements are untouched.
+            if note_stripped and len(toks) >= 2 and _looks_like_page_ref(
+                    toks[0], toks[1]):
+                toks = toks[1:]
+            values = [parse_number(t) for t in toks]
+            values = [v for v in values if v is not None]
+            if not values:
+                continue
+            ext = Extraction(metric=metric, value=values[0],
+                             raw_label=item.label, page=item.page,
+                             source=item.source, score=score,
+                             extra_values=values[1:])
+            prev = by_metric.get(metric)
+            if prev is None or score > prev.score:
+                by_metric[metric] = ext
+    return by_metric
+
+
+# =============================================================================
+# STAGE 6 — VALIDATE  (was finagent/validator.py)
+# Prove which extracted values are correct. Statements are self-verifying:
+# accounting identities and cross-statement ties confirm a value with no
+# ground truth. Verdicts: VERIFIED / PROBABLE / FLAGGED / MISSING (+ DERIVED).
+# =============================================================================
+class Status(str, Enum):
+    VERIFIED = "VERIFIED"
+    PROBABLE = "PROBABLE"
+    FLAGGED = "FLAGGED"
+    MISSING = "MISSING"
+    DERIVED = "DERIVED"   # filled in by the deriver stage, never by extraction
+
+
+# (name, lhs metrics, rhs metrics, optional rhs metrics)
+# meaning sum(lhs) == sum(rhs); optional members join only when extracted
+IDENTITY_CHECKS = [
+    ("balance_sheet_identity",
+     ["total_assets"], ["total_liabilities", "total_equity"], []),
+    ("equity_liabilities_total",
+     ["total_assets"], ["total_equity_and_liabilities"], []),
+    ("assets_composition",
+     ["total_assets"], ["current_assets", "non_current_assets"], []),
+    ("liabilities_composition",
+     ["total_liabilities"], ["current_liabilities", "non_current_liabilities"], []),
+    ("total_income_buildup",
+     ["total_income"], ["revenue", "other_income"], []),
+    ("net_profit_buildup",
+     ["profit_before_tax"], ["net_profit", "tax_expense"], []),
+    ("cash_flow_total",
+     ["net_change_in_cash"],
+     ["cash_from_operations", "cash_from_investing", "cash_from_financing"],
+     ["fx_effect_on_cash"]),
+]
+
+# charges presented as a positive figure in Indian reports but as a negative
+# line in EU/IFRS layouts ("Income taxes  − 2,785"); identities must hold
+# under either convention
+SIGN_AMBIGUOUS = {"tax_expense"}
+
+# the same number must appear in two statements: (name, metric_a, metric_b)
+CROSS_STATEMENT_CHECKS = [
+    ("closing_cash_ties_to_balance_sheet", "cash_and_equivalents", "closing_cash"),
+]
+
+
+def within_tolerance(a, b, rel=0.005, abs_floor=2.0):
+    """Rounding-aware equality: reports round to the printed unit, so a sum
+    of rounded line items can legitimately differ by a few units."""
+    return abs(a - b) <= max(abs_floor, rel * max(abs(a), abs(b)))
+
+
+@dataclass
+class MetricVerdict:
+    metric: str
+    status: Status
+    value: float = None
+    sources: list = field(default_factory=list)
+    page: int = None
+    checks_passed: list = field(default_factory=list)
+    checks_failed: list = field(default_factory=list)
+
+
+class Validator:
+    def __init__(self, expected_metrics=None):
+        # metric -> list of (value, source, page, label_text)
+        self.values = defaultdict(list)
+        self.expected = expected_metrics or []
+
+    def add(self, metric, value, source, page=None, label_text=None):
+        self.values[metric].append((float(value), source, page, label_text))
+
+    def _consensus(self, metric):
+        """Median of proposals — one wild value can't drag it."""
+        vals = self.values.get(metric)
+        return median(v for v, *_ in vals) if vals else None
+
+    def validate(self):
+        consensus = {m: self._consensus(m) for m in self.values}
+        passed, failed = defaultdict(list), defaultdict(list)
+
+        def totals(metrics):
+            """All defensible sums: a negative sign-ambiguous charge also
+            contributes its flipped value as an alternative."""
+            if any(consensus.get(m) is None for m in metrics):
+                return None
+            sums = [0.0]
+            for m in metrics:
+                v = consensus[m]
+                if m in SIGN_AMBIGUOUS and v < 0:
+                    sums = [s + v for s in sums] + [s - v for s in sums]
+                else:
+                    sums = [s + v for s in sums]
+            return sums
+
+        # extractors that disagree flag their metric
+        for m, obs in self.values.items():
+            if len(obs) > 1:
+                agree = all(within_tolerance(v, consensus[m]) for v, *_ in obs)
+                (passed if agree else failed)[m].append("cross_extractor_voting")
+
+        # accounting identities. Optional members (fx effect) sit INSIDE the
+        # sum in some layouts (BMW) but OUTSIDE it, in the opening->closing
+        # reconciliation, in others (Airtel "(a+b+c)") — the identity passes
+        # if either reading ties. The with-fx reading is tried first so fx
+        # keeps its VERIFIED credit where it genuinely belongs to the sum.
+        for name, lhs, rhs, opt in IDENTITY_CHECKS:
+            present = [m for m in opt if consensus.get(m) is not None]
+            ls = totals(lhs)
+            if ls is None or totals(rhs) is None:
+                continue
+            variants = ([rhs + present] if present else []) + [rhs]
+            ok_members = next(
+                (members for members in variants
+                 if any(within_tolerance(l, r)
+                        for l in ls for r in totals(members))),
+                None)
+            detail = f"{name} ({ls[0]:,.1f} vs {totals(rhs)[0]:,.1f})"
+            if ok_members is not None:
+                for m in lhs + ok_members:
+                    passed[m].append(detail)
+            else:
+                for m in lhs + rhs + present:
+                    failed[m].append(detail)
+
+        # cross-statement ties
+        for name, a, b in CROSS_STATEMENT_CHECKS:
+            va, vb = consensus.get(a), consensus.get(b)
+            if va is None or vb is None:
+                continue
+            detail = f"{name} ({va:,.1f} vs {vb:,.1f})"
+            for m in (a, b):
+                (passed if within_tolerance(va, vb) else failed)[m].append(detail)
+
+        verdicts = {}
+        for m, obs in self.values.items():
+            value = consensus[m]
+            best = min(obs, key=lambda o: abs(o[0] - value))
+            status = (Status.FLAGGED if failed[m]
+                      else Status.VERIFIED if passed[m]
+                      else Status.PROBABLE)
+            verdicts[m] = MetricVerdict(
+                metric=m, status=status, value=value,
+                sources=sorted({s for _, s, _, _ in obs}),
+                page=best[2], checks_passed=passed[m], checks_failed=failed[m])
+        for m in self.expected:
+            if m not in verdicts:
+                verdicts[m] = MetricVerdict(metric=m, status=Status.MISSING)
+        return ValidationReport(verdicts)
+
+
+class ValidationReport:
+    def __init__(self, verdicts):
+        self.verdicts = verdicts
+
+    def by_status(self, status):
+        return [v for v in self.verdicts.values() if v.status == status]
+
+    def print_summary(self):
+        icon = {Status.VERIFIED: "[OK]", Status.PROBABLE: "[?] ",
+                Status.FLAGGED: "[!!]", Status.MISSING: "[--]",
+                Status.DERIVED: "[=>]"}
+        print("=" * 72)
+        for status in (Status.FLAGGED, Status.MISSING, Status.DERIVED,
+                       Status.VERIFIED, Status.PROBABLE):
+            for v in sorted(self.by_status(status), key=lambda x: x.metric):
+                val = f"{v.value:,.1f}" if v.value is not None else "-"
+                src = ",".join(v.sources) if v.sources else "-"
+                print(f"{icon[v.status]} {v.metric:<32} {val:>15}  [{src}]")
+                for c in v.checks_failed:
+                    print(f"      failed: {c}")
+        print("-" * 72)
+        c = {s: len(self.by_status(s)) for s in Status}
+        print(f"VERIFIED: {c[Status.VERIFIED]}   PROBABLE: {c[Status.PROBABLE]}   "
+              f"FLAGGED: {c[Status.FLAGGED]}   DERIVED: {c[Status.DERIVED]}   "
+              f"MISSING: {c[Status.MISSING]}")
+        print("=" * 72)
+
+    def to_dict(self):
+        return {m: {"status": v.status.value, "value": v.value,
+                    "sources": v.sources, "page": v.page,
+                    "checks_passed": v.checks_passed,
+                    "checks_failed": v.checks_failed}
+                for m, v in self.verdicts.items()}
+
+
+# =============================================================================
+# STAGE 6b — DERIVE  (was finagent/deriver.py)
+# Derive missing metrics that are arithmetic consequences of extracted ones.
+# Runs AFTER validation (no feedback into the proofs); reported as DERIVED,
+# never VERIFIED, because a derived value satisfies its identity by construction.
+# =============================================================================
+# target <- [(input_metric, sign), ...]
+DERIVATIONS = [
+    ("total_liabilities", [("total_equity_and_liabilities", 1), ("total_equity", -1)]),
+    ("total_liabilities", [("total_assets", 1), ("total_equity", -1)]),
+    ("total_equity", [("total_equity_and_liabilities", 1), ("total_liabilities", -1)]),
+    ("total_equity", [("total_assets", 1), ("total_liabilities", -1)]),
+    ("current_assets", [("total_assets", 1), ("non_current_assets", -1)]),
+    ("non_current_assets", [("total_assets", 1), ("current_assets", -1)]),
+    ("current_liabilities", [("total_liabilities", 1), ("non_current_liabilities", -1)]),
+    ("non_current_liabilities", [("total_liabilities", 1), ("current_liabilities", -1)]),
+    # the balance-sheet identity itself: both sides are the same number
+    ("total_equity_and_liabilities", [("total_assets", 1)]),
+    ("total_assets", [("total_equity_and_liabilities", 1)]),
+    ("total_income", [("revenue", 1), ("other_income", 1)]),
+    # some P&Ls print tax only as Current/Deferred sub-lines with no total
+    # (Airtel). Sign risk, documented: an EU-convention file (tax printed
+    # negative) with tax MISSING would derive the positive magnitude — no
+    # such case in corpus, and the positive-only guard logs any oddity.
+    ("tax_expense", [("profit_before_tax", 1), ("net_profit", -1)]),
+]
+
+_TRUSTED = {Status.VERIFIED, Status.PROBABLE}
+
+
+def _expr(formula, inputs):
+    parts = [f"{'-' if s < 0 else '+'} {m}[{i.status.value[0]}]"
+             for (m, s), i in zip(formula, inputs)]
+    return " ".join(parts).lstrip("+ ")
+
+
+def derive(report):
+    """Fill MISSING verdicts in a ValidationReport with DERIVED ones."""
+    verdicts = report.verdicts
+    by_target = {}
+    for target, formula in DERIVATIONS:
+        by_target.setdefault(target, []).append(formula)
+    for target, formulas in by_target.items():
+        v = verdicts.get(target)
+        if v is None or v.status != Status.MISSING:
+            continue
+        # all computable formulas compete; the one resting on the fewest
+        # unproven (non-VERIFIED) inputs wins — code order only breaks ties
+        candidates = []
+        for order, formula in enumerate(formulas):
+            inputs = [verdicts.get(m) for m, _ in formula]
+            if any(i is None or i.status not in _TRUSTED for i in inputs):
+                continue
+            unproven = sum(1 for i in inputs if i.status != Status.VERIFIED)
+            candidates.append((unproven, order, formula, inputs))
+        if not candidates:
+            continue
+        _, _, formula, inputs = min(candidates, key=lambda c: c[:2])
+        value = sum(sign * i.value for (_, sign), i in zip(formula, inputs))
+        if value <= 0:
+            # a non-positive result means an upstream extraction is corrupt —
+            # keep MISSING but leave the diagnostic, don't discard silently
+            v.checks_failed.append(
+                f"derivation discarded (non-positive): {_expr(formula, inputs)}")
+            continue
+        verdicts[target] = MetricVerdict(
+            metric=target, status=Status.DERIVED, value=value,
+            sources=["derived"],
+            page=inputs[0].page,
+            checks_passed=[f"derived: {_expr(formula, inputs)}"])
+    return report
+
+
+# =============================================================================
+# STAGE 7 — WRITE  (was finagent/writer.py)
+# Excel output with receipts: one row per metric with value, validation
+# status, page citation, the exact matched label, sources, and checks.
+# =============================================================================
+def _clean(value):
+    """Strip control/illegal chars openpyxl refuses to write to a cell.
+    PDF text layers occasionally carry stray control bytes inside labels
+    (Bajaj's "Other operating income" arrived as a control-joined token);
+    those would crash the whole write. Non-strings pass through untouched."""
+    if isinstance(value, str):
+        return ILLEGAL_CHARACTERS_RE.sub("", value)
+    return value
+
+
+STATUS_FILL = {
+    "VERIFIED": PatternFill("solid", fgColor="C6EFCE"),   # green
+    "PROBABLE": PatternFill("solid", fgColor="FFEB9C"),   # yellow
+    "FLAGGED":  PatternFill("solid", fgColor="FFC7CE"),   # red
+    "MISSING":  PatternFill("solid", fgColor="D9D9D9"),   # grey
+    "DERIVED":  PatternFill("solid", fgColor="BDD7EE"),   # blue: computed,
+}                                                         # not extracted
+STATEMENT_NAMES = {"PL": "Profit & Loss", "BS": "Balance Sheet", "CF": "Cash Flow"}
+HEADERS = ["Statement", "Metric", "Value", "Status", "Page",
+           "Matched label", "Sources", "Checks passed", "Checks failed"]
+
+
+def write_excel(report_dict, out_path, extractions=None, meta=None):
+    """report_dict: ValidationReport.to_dict(); extractions: {metric: Extraction}."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Metrics"
+
+    if meta:
+        ws.append([meta])
+        ws["A1"].font = Font(bold=True, size=12)
+        ws.append([])
+
+    ws.append(HEADERS)
+    header_row = ws.max_row
+    for c in ws[header_row]:
+        c.font = Font(bold=True)
+
+    extractions = extractions or {}
+    for metric, spec in METRICS.items():
+        v = report_dict.get(metric, {"status": "MISSING", "value": None,
+                                     "sources": [], "page": None,
+                                     "checks_passed": [], "checks_failed": []})
+        ext = extractions.get(metric)
+        page = v.get("page")
+        ws.append([_clean(x) for x in (
+            STATEMENT_NAMES[spec["statement"]],
+            metric,
+            v["value"],
+            v["status"],
+            (page + 1) if page is not None else None,   # 1-based for humans
+            ext.raw_label if ext else "",
+            ", ".join(v.get("sources", [])),
+            "; ".join(v.get("checks_passed", [])),
+            "; ".join(v.get("checks_failed", [])),
+        )])
+        ws.cell(row=ws.max_row, column=4).fill = STATUS_FILL[v["status"]]
+
+    widths = [14, 28, 16, 11, 6, 45, 18, 40, 40]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[ws.cell(row=header_row, column=i).column_letter].width = w
+    ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
+
+    wb.save(out_path)
+    return out_path
+
+
+# =============================================================================
+# PIPELINE  (was finagent/pipeline.py)
+# Glue: pdf in -> validated metrics -> excel out.
+# =============================================================================
+def run(pdf_path, out_path=None, verbose=True):
+    pdf_path = Path(pdf_path)
+    t0 = time.time()
+
+    def log(msg):
+        if verbose:
+            print(msg)
+
+    # 1. profile
+    doc = profile(pdf_path)
+    log(f"[profile] {doc.summary()}")
+
+    # 3. locate statement pages
+    locations = locate(doc)
+    for code, loc in locations.items():
+        pages_1based = [i + 1 for i in loc.page_indices]
+        log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
+
+    # 4. extract + 5. normalize, statement by statement so labels can only
+    # match metrics that belong on that statement
+    v = Validator(expected_metrics=EXPECTED_METRICS)
+    all_extractions = {}
+    for code, loc in locations.items():
+        if not loc.page_indices:
+            continue
+        raw = extract(pdf_path, loc.page_indices,
+                      cue_pats=STATEMENT_SIGNATURES[code][1])
+        extractions = normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
+        log(f"[extract] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
+        for metric, ext in extractions.items():
+            all_extractions[metric] = ext
+            v.add(metric, ext.value, source=ext.source, page=ext.page,
+                  label_text=ext.raw_label)
+
+    # 6. validate, then 6b. derive what the identities fix exactly.
+    # Order matters: derived values must never feed the identity proofs —
+    # they satisfy the deriving identity by construction.
+    report = v.validate()
+    report = derive(report)
+    if verbose:
+        report.print_summary()
+
+    # 7. write
+    if out_path is None:
+        out_path = pdf_path.with_suffix("").name + "_metrics.xlsx"
+        out_path = Path("output") / out_path
+        out_path.parent.mkdir(exist_ok=True)
+    write_excel(report.to_dict(), out_path, extractions=all_extractions,
+                meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}")
+    log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
+    return report
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(1)
+    run(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)

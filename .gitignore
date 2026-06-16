@@ -1,0 +1,28 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Virtual environment (regenerable from requirements.txt) ---
+.venv/
+venv/
+env/
+
+# --- Generated outputs ---
+output/
+graphify-out/
+scratch/
+
+# --- Test data: copyrighted annual reports, NOT redistributable ---
+# Add your own PDFs here locally; CI tests the logic, not the PDFs.
+test_pdfs/
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

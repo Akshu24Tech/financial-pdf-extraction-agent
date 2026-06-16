@@ -1,0 +1,15 @@
+# Project + tool config. Keeping ruff (lint) and pytest settings here means
+# the same rules run locally and in CI — no drift between your machine and the
+# pipeline.
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# Default ruff rules (pyflakes F + a sane pycodestyle subset E) catch real
+# bugs — undefined names, unused imports, syntax errors — without nitpicking
+# style. Tighten later (Level 7) once the habit is in place.
+ignore = ["E741"]   # allow short names like `l`, `r` in the math helpers
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

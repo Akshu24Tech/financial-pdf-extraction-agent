@@ -1,0 +1,40 @@
+# CI pipeline — runs automatically on every push and every pull request.
+# GitHub spins up a fresh Ubuntu machine, installs the project, lints it, and
+# runs the tests. If anything fails, the commit gets a red X; if all pass, a
+# green check. This is the heart of "continuous integration".
+name: CI
+
+# WHEN this runs:
+on:
+  push:              # every push to any branch
+  pull_request:      # every PR (so checks show up before you merge)
+
+jobs:
+  test:                          # one job, named "test"
+    runs-on: ubuntu-latest       # the fresh machine GitHub gives us
+
+    steps:
+      # 1. Get our code onto the machine
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      # 2. Install the Python we want
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 3. Install dependencies + the CI tools (pytest, ruff)
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff
+
+      # 4. Lint: catch bugs and dead code before running anything
+      - name: Lint with ruff
+        run: ruff check .
+
+      # 5. Test: run the unit suite (the accounting-proof logic)
+      - name: Run tests
+        run: pytest -v
