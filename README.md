@@ -1,5 +1,7 @@
 # Financial PDF Extraction Agent (v2)
 
+[![CI](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/actions/workflows/ci.yml)
+
 Give it any company's annual-report PDF. It finds the financial statements,
 pulls out the key numbers, **proves each one is correct**, and writes a tidy
 Excel where every value carries its own receipt (page number, the exact label
