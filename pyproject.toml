@@ -13,3 +13,7 @@ ignore = ["E741"]   # allow short names like `l`, `r` in the math helpers
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Add the project root to the import path so `import finagent` works no matter
+# how pytest is launched (`pytest` vs `python -m pytest`). Without this, bare
+# `pytest` can't find the package — which is exactly what broke CI once.
+pythonpath = ["."]
