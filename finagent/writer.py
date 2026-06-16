@@ -1,0 +1,76 @@
+"""Stage 7: Excel output with receipts.
+
+One row per metric: value, validation status, page citation, the exact
+label text it was matched from, sources, and which checks passed/failed.
+"""
+from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+from openpyxl.styles import Font, PatternFill
+
+from .schema import METRICS
+
+
+def _clean(value):
+    """Strip control/illegal chars openpyxl refuses to write to a cell.
+    PDF text layers occasionally carry stray control bytes inside labels
+    (Bajaj's "Other operating income" arrived as a control-joined token);
+    those would crash the whole write. Non-strings pass through untouched."""
+    if isinstance(value, str):
+        return ILLEGAL_CHARACTERS_RE.sub("", value)
+    return value
+
+STATUS_FILL = {
+    "VERIFIED": PatternFill("solid", fgColor="C6EFCE"),   # green
+    "PROBABLE": PatternFill("solid", fgColor="FFEB9C"),   # yellow
+    "FLAGGED":  PatternFill("solid", fgColor="FFC7CE"),   # red
+    "MISSING":  PatternFill("solid", fgColor="D9D9D9"),   # grey
+    "DERIVED":  PatternFill("solid", fgColor="BDD7EE"),   # blue: computed,
+}                                                         # not extracted
+STATEMENT_NAMES = {"PL": "Profit & Loss", "BS": "Balance Sheet", "CF": "Cash Flow"}
+HEADERS = ["Statement", "Metric", "Value", "Status", "Page",
+           "Matched label", "Sources", "Checks passed", "Checks failed"]
+
+
+def write_excel(report_dict, out_path, extractions=None, meta=None):
+    """report_dict: ValidationReport.to_dict(); extractions: {metric: Extraction}."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Metrics"
+
+    if meta:
+        ws.append([meta])
+        ws["A1"].font = Font(bold=True, size=12)
+        ws.append([])
+
+    ws.append(HEADERS)
+    header_row = ws.max_row
+    for c in ws[header_row]:
+        c.font = Font(bold=True)
+
+    extractions = extractions or {}
+    for metric, spec in METRICS.items():
+        v = report_dict.get(metric, {"status": "MISSING", "value": None,
+                                     "sources": [], "page": None,
+                                     "checks_passed": [], "checks_failed": []})
+        ext = extractions.get(metric)
+        page = v.get("page")
+        ws.append([_clean(x) for x in (
+            STATEMENT_NAMES[spec["statement"]],
+            metric,
+            v["value"],
+            v["status"],
+            (page + 1) if page is not None else None,   # 1-based for humans
+            ext.raw_label if ext else "",
+            ", ".join(v.get("sources", [])),
+            "; ".join(v.get("checks_passed", [])),
+            "; ".join(v.get("checks_failed", [])),
+        )])
+        ws.cell(row=ws.max_row, column=4).fill = STATUS_FILL[v["status"]]
+
+    widths = [14, 28, 16, 11, 6, 45, 18, 40, 40]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[ws.cell(row=header_row, column=i).column_letter].width = w
+    ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
+
+    wb.save(out_path)
+    return out_path

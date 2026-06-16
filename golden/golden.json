@@ -1,0 +1,1281 @@
+{
+ "_meta": {
+  "created": "2026-06-11",
+  "method": "Values hand-read from VISUAL page renders (pypdfium2, 4-6x zoom, two-up pages split, dense pages cropped) - independent of the PDF text layer the extractor parses. Every value was cross-checked against accounting identities at reading time (assets composition, liabilities composition, profit buildup, cash-flow buildup, closing-cash tie); identity failures forced re-zoom until resolved.",
+  "value_convention": "Numbers as printed in the report's own unit (see per-file 'unit'), commas removed, Indian lakh/crore digit grouping collapsed. Negatives as printed (parens / minus).",
+  "limitations": [
+   "Same-model correlated-error risk: reader and extractor share model biases; mitigated by visual (not text-layer) reading + identity cross-checks, not eliminated.",
+   "8 PDFs prove correctness on these 8 PDFs, not generalization.",
+   "Stale the day a test PDF is replaced; re-read pages then.",
+   "Variant ambiguity documented per-metric in 'note' where it exists."
+  ]
+ },
+ "TCS_2024-2025.pdf": {
+  "unit": "INR crore",
+  "basis": "consolidated",
+  "period": "FY ended 2025-03-31",
+  "metrics": {
+   "total_assets": {
+    "value": 159629,
+    "page": 180,
+    "label": "TOTAL ASSETS"
+   },
+   "total_equity_and_liabilities": {
+    "value": 159629,
+    "page": 180,
+    "label": "TOTAL EQUITY AND LIABILITIES"
+   },
+   "total_equity": {
+    "value": 95771,
+    "page": 180,
+    "label": "Total equity",
+    "note": "includes NCI 1,015"
+   },
+   "current_assets": {
+    "value": 123011,
+    "page": 180,
+    "label": "Total current assets"
+   },
+   "non_current_assets": {
+    "value": 36618,
+    "page": 180,
+    "label": "Total non-current assets"
+   },
+   "current_liabilities": {
+    "value": 53001,
+    "page": 180,
+    "label": "Total current liabilities"
+   },
+   "non_current_liabilities": {
+    "value": 10857,
+    "page": 180,
+    "label": "Total non-current liabilities"
+   },
+   "inventories": {
+    "value": 21,
+    "page": 180,
+    "label": "Inventories"
+   },
+   "cash_and_equivalents": {
+    "value": 8342,
+    "page": 180,
+    "label": "Cash and cash equivalents"
+   },
+   "revenue": {
+    "value": 255324,
+    "page": 181,
+    "label": "Revenue from operations"
+   },
+   "other_income": {
+    "value": 3962,
+    "page": 181,
+    "label": "Other income"
+   },
+   "total_income": {
+    "value": 259286,
+    "page": 181,
+    "label": "TOTAL INCOME"
+   },
+   "total_expenses": {
+    "value": 193955,
+    "page": 181,
+    "label": "TOTAL EXPENSES"
+   },
+   "employee_costs": {
+    "value": 145788,
+    "page": 181,
+    "label": "Employee benefit expenses"
+   },
+   "finance_costs": {
+    "value": 796,
+    "page": 181,
+    "label": "Finance costs"
+   },
+   "depreciation": {
+    "value": 5242,
+    "page": 181,
+    "label": "Depreciation and amortisation expense"
+   },
+   "profit_before_tax": {
+    "value": 65331,
+    "page": 181,
+    "label": "PROFIT BEFORE TAX"
+   },
+   "tax_expense": {
+    "value": 16534,
+    "page": 181,
+    "label": "TOTAL TAX EXPENSE"
+   },
+   "net_profit": {
+    "value": 48797,
+    "page": 181,
+    "label": "PROFIT FOR THE YEAR"
+   },
+   "total_comprehensive_income": {
+    "value": 49386,
+    "page": 181,
+    "label": "TOTAL COMPREHENSIVE INCOME FOR THE YEAR"
+   },
+   "eps_basic": {
+    "value": 134.19,
+    "page": 181,
+    "label": "Earnings per equity share: Basic and diluted"
+   },
+   "cash_from_operations": {
+    "value": 48908,
+    "page": 184,
+    "label": "Net cash flows generated from operating activities"
+   },
+   "cash_from_investing": {
+    "value": -2318,
+    "page": 185,
+    "label": "Net cash flows generated from / (used in) investing activities"
+   },
+   "cash_from_financing": {
+    "value": -47438,
+    "page": 185,
+    "label": "Net cash flows used in financing activities"
+   },
+   "net_change_in_cash": {
+    "value": -848,
+    "page": 185,
+    "label": "Net change in cash and cash equivalents"
+   },
+   "fx_effect_on_cash": {
+    "value": 174,
+    "page": 185,
+    "label": "Exchange difference on translation of foreign currency cash and cash equivalents"
+   },
+   "closing_cash": {
+    "value": 8342,
+    "page": 185,
+    "label": "Cash and cash equivalents at the end of the year"
+   }
+  }
+ },
+ "Reliance.pdf": {
+  "unit": "INR crore",
+  "basis": "consolidated",
+  "period": "FY ended 2024-03-31",
+  "metrics": {
+   "total_assets": {
+    "value": 1755986,
+    "page": 110,
+    "label": "Total Assets"
+   },
+   "total_equity_and_liabilities": {
+    "value": 1755986,
+    "page": 110,
+    "label": "Total Equity and Liabilities"
+   },
+   "total_equity": {
+    "value": 925788,
+    "page": 110,
+    "label": "Total Equity",
+    "note": "includes NCI 1,32,307"
+   },
+   "total_liabilities": {
+    "value": 830198,
+    "page": 110,
+    "label": "Total Liabilities"
+   },
+   "non_current_assets": {
+    "value": 1285886,
+    "page": 110,
+    "label": "Total Non-Current Assets"
+   },
+   "current_assets": {
+    "value": 470100,
+    "page": 110,
+    "label": "Total Current Assets"
+   },
+   "non_current_liabilities": {
+    "value": 432831,
+    "page": 110,
+    "label": "Total Non-Current Liabilities"
+   },
+   "current_liabilities": {
+    "value": 397367,
+    "page": 110,
+    "label": "Total Current Liabilities"
+   },
+   "inventories": {
+    "value": 152770,
+    "page": 110,
+    "label": "Inventories"
+   },
+   "trade_receivables": {
+    "value": 31628,
+    "page": 110,
+    "label": "Trade Receivables"
+   },
+   "cash_and_equivalents": {
+    "value": 97225,
+    "page": 110,
+    "label": "Cash and Cash Equivalents"
+   },
+   "revenue": {
+    "value": 914472,
+    "page": 111,
+    "label": "Revenue from Operations"
+   },
+   "other_income": {
+    "value": 16057,
+    "page": 111,
+    "label": "Other Income"
+   },
+   "total_income": {
+    "value": 930529,
+    "page": 111,
+    "label": "Total Income"
+   },
+   "total_expenses": {
+    "value": 826189,
+    "page": 111,
+    "label": "Total Expenses"
+   },
+   "employee_costs": {
+    "value": 25679,
+    "page": 111,
+    "label": "Employee Benefits Expense"
+   },
+   "finance_costs": {
+    "value": 23118,
+    "page": 111,
+    "label": "Finance Costs"
+   },
+   "depreciation": {
+    "value": 50832,
+    "page": 111,
+    "label": "Depreciation / Amortisation and Depletion Expense"
+   },
+   "profit_before_tax": {
+    "value": 104727,
+    "page": 111,
+    "label": "Profit Before Tax"
+   },
+   "tax_expense": {
+    "value": 25707,
+    "page": 111,
+    "label": "Tax Expenses (current 13,590 + deferred 12,117)"
+   },
+   "net_profit": {
+    "value": 79020,
+    "page": 111,
+    "label": "Profit for the Year"
+   },
+   "total_comprehensive_income": {
+    "value": 82689,
+    "page": 111,
+    "label": "Total Comprehensive Income for the year"
+   },
+   "cash_from_operations": {
+    "value": 158788,
+    "page": 113,
+    "label": "Net Cash Flow from Operating Activities"
+   },
+   "cash_from_investing": {
+    "value": -114301,
+    "page": 113,
+    "label": "Net Cash used in Investing Activities"
+   },
+   "cash_from_financing": {
+    "value": -16646,
+    "page": 113,
+    "label": "Net Cash Flow from / (used in) Financing Activities"
+   },
+   "net_change_in_cash": {
+    "value": 27841,
+    "page": 113,
+    "label": "Net Increase in Cash and Cash Equivalents"
+   },
+   "closing_cash": {
+    "value": 97225,
+    "page": 113,
+    "label": "Closing Balance of Cash and Cash Equivalents"
+   }
+  }
+ },
+ "Airtel_2024-25.pdf": {
+  "unit": "INR million",
+  "basis": "consolidated",
+  "period": "FY ended 2025-03-31",
+  "metrics": {
+   "total_assets": {
+    "value": 5143604,
+    "page": 199,
+    "label": "Total assets"
+   },
+   "total_equity_and_liabilities": {
+    "value": 5143604,
+    "page": 199,
+    "label": "Total equity and liabilities"
+   },
+   "total_equity": {
+    "value": 1534677,
+    "page": 199,
+    "label": "Total equity",
+    "note": "owners 1,136,719 + NCI 397,958"
+   },
+   "total_liabilities": {
+    "value": 3608927,
+    "page": 199,
+    "label": "Total liabilities"
+   },
+   "non_current_assets": {
+    "value": 4467716,
+    "page": 199,
+    "label": "Total non-current assets (printed as subtotal 4,467,716)"
+   },
+   "current_assets": {
+    "value": 675888,
+    "page": 199,
+    "label": "Total current assets (printed as subtotal 675,888)"
+   },
+   "non_current_liabilities": {
+    "value": 1804525,
+    "page": 199,
+    "label": "Non-current liabilities subtotal"
+   },
+   "current_liabilities": {
+    "value": 1804402,
+    "page": 199,
+    "label": "Current liabilities subtotal"
+   },
+   "inventories": {
+    "value": 4517,
+    "page": 199,
+    "label": "Inventories"
+   },
+   "trade_receivables": {
+    "value": 74557,
+    "page": 199,
+    "label": "Trade receivables (current)"
+   },
+   "cash_and_equivalents": {
+    "value": 61056,
+    "page": 199,
+    "label": "Cash and cash equivalents",
+    "note": "other bank balances 106,143 is a separate line"
+   },
+   "revenue": {
+    "value": 1729852,
+    "page": 199,
+    "label": "Revenue from operations"
+   },
+   "other_income": {
+    "value": 15727,
+    "page": 199,
+    "label": "Other income"
+   },
+   "total_income": {
+    "value": 1745589,
+    "page": 199,
+    "label": "Total income (printed 1,745,589)"
+   },
+   "depreciation": {
+    "value": 455703,
+    "page": 199,
+    "label": "Depreciation and amortisation expenses"
+   },
+   "profit_before_tax": {
+    "value": 383985,
+    "page": 199,
+    "label": "Profit before tax",
+    "note": "after exceptional items gain 72,868"
+   },
+   "tax_expense": {
+    "value": 9172,
+    "page": 199,
+    "label": "Tax expense (current 41,121 + deferred -31,949)"
+   },
+   "net_profit": {
+    "value": 374813,
+    "page": 199,
+    "label": "Profit for the year"
+   },
+   "total_comprehensive_income": {
+    "value": 400507,
+    "page": 199,
+    "label": "Total comprehensive income / (loss) for the year"
+   },
+   "eps_basic": {
+    "value": 58.0,
+    "page": 199,
+    "label": "Earnings per share - Basic"
+   },
+   "cash_from_operations": {
+    "value": 983322,
+    "page": 201,
+    "label": "Net cash generated from operating activities (a)"
+   },
+   "cash_from_investing": {
+    "value": -602698,
+    "page": 201,
+    "label": "Net cash used in investing activities (b)"
+   },
+   "cash_from_financing": {
+    "value": -365332,
+    "page": 201,
+    "label": "Net cash used in financing activities (c)"
+   },
+   "net_change_in_cash": {
+    "value": 15292,
+    "page": 201,
+    "label": "Net increase in the cash and cash equivalents during the year (a+b+c)"
+   },
+   "fx_effect_on_cash": {
+    "value": 718,
+    "page": 201,
+    "label": "Effect of exchange rate on the cash and cash equivalents"
+   },
+   "closing_cash": {
+    "value": 106531,
+    "page": 201,
+    "label": "Cash and cash equivalents as at end of the year",
+    "note": "does NOT equal BS cash 61,056 (CF basis incl deposits)"
+   }
+  }
+ },
+ "BMW-2025.pdf": {
+  "unit": "EUR million",
+  "basis": "consolidated (Group column)",
+  "period": "FY ended 2025-12-31",
+  "metrics": {
+   "total_assets": {
+    "value": 265967,
+    "page": 273,
+    "label": "Total assets"
+   },
+   "total_equity_and_liabilities": {
+    "value": 265967,
+    "page": 274,
+    "label": "Total equity and liabilities"
+   },
+   "total_equity": {
+    "value": 97906,
+    "page": 274,
+    "label": "Equity",
+    "note": "incl NCI 2,209"
+   },
+   "non_current_assets": {
+    "value": 174319,
+    "page": 273,
+    "label": "Non-current assets"
+   },
+   "current_assets": {
+    "value": 91648,
+    "page": 273,
+    "label": "Current assets"
+   },
+   "non_current_liabilities": {
+    "value": 86337,
+    "page": 274,
+    "label": "Non-current provisions and liabilities"
+   },
+   "current_liabilities": {
+    "value": 81724,
+    "page": 274,
+    "label": "Current provisions and liabilities"
+   },
+   "inventories": {
+    "value": 21281,
+    "page": 273,
+    "label": "Inventories"
+   },
+   "trade_receivables": {
+    "value": 2946,
+    "page": 273,
+    "label": "Trade receivables"
+   },
+   "cash_and_equivalents": {
+    "value": 18854,
+    "page": 273,
+    "label": "Cash and cash equivalents"
+   },
+   "revenue": {
+    "value": 133453,
+    "page": 271,
+    "label": "Revenues"
+   },
+   "other_income": {
+    "value": 1556,
+    "page": 271,
+    "label": "Other operating income"
+   },
+   "profit_before_tax": {
+    "value": 10236,
+    "page": 271,
+    "label": "Profit/loss before tax"
+   },
+   "tax_expense": {
+    "value": -2785,
+    "page": 271,
+    "label": "Income taxes",
+    "note": "printed as negative line (EU convention)"
+   },
+   "net_profit": {
+    "value": 7451,
+    "page": 271,
+    "label": "Net profit/loss"
+   },
+   "eps_basic": {
+    "value": 11.89,
+    "page": 271,
+    "label": "Basic earnings per ordinary share in EUR"
+   },
+   "cash_from_operations": {
+    "value": 8228,
+    "page": 275,
+    "label": "Cash inflow/outflow from operating activities",
+    "provenance": "text-layer, identity-tied"
+   },
+   "cash_from_investing": {
+    "value": -9952,
+    "page": 275,
+    "label": "Cash inflow/outflow from investing activities",
+    "provenance": "text-layer, identity-tied"
+   },
+   "cash_from_financing": {
+    "value": 1373,
+    "page": 276,
+    "label": "Cash inflow/outflow from financing activities",
+    "provenance": "text-layer, identity-tied"
+   },
+   "fx_effect_on_cash": {
+    "value": -82,
+    "page": 276,
+    "label": "Effect of exchange rate on cash and cash equivalents",
+    "provenance": "text-layer, identity-tied"
+   },
+   "net_change_in_cash": {
+    "value": -433,
+    "page": 276,
+    "label": "Change in cash and cash equivalents",
+    "provenance": "text-layer, identity-tied"
+   },
+   "closing_cash": {
+    "value": 18854,
+    "page": 276,
+    "label": "Cash and cash equivalents as at 31 December",
+    "note": "ties to BS cash (visually confirmed)"
+   }
+  }
+ },
+ "Adani_FY25.pdf": {
+  "unit": "INR crore",
+  "basis": "consolidated",
+  "period": "FY ended 2025-03-31",
+  "entity_note": "Adani Energy Solutions Limited; balance sheet carries Regulatory Deferral Account lines",
+  "metrics": {
+   "total_assets": {
+    "value": 73960.1,
+    "page": 552,
+    "label": "Total Assets",
+    "note": "incl Regulatory Deferral Assets 3,087.61; before-regulatory total is 70,872.49"
+   },
+   "total_equity_and_liabilities": {
+    "value": 73960.1,
+    "page": 552,
+    "label": "Total Equity and Liabilities"
+   },
+   "total_equity": {
+    "value": 23011.26,
+    "page": 552,
+    "label": "Total Equity",
+    "note": "owners 22,068.20 + NCI 943.06"
+   },
+   "total_liabilities": {
+    "value": 50855.12,
+    "page": 552,
+    "label": "Total Liabilities before Regulatory Deferral Account",
+    "note": "+ regulatory liabilities 93.72"
+   },
+   "non_current_assets": {
+    "value": 57285.98,
+    "page": 552,
+    "label": "Total Non-current Assets"
+   },
+   "current_assets": {
+    "value": 13586.51,
+    "page": 552,
+    "label": "Total Current Assets"
+   },
+   "non_current_liabilities": {
+    "value": 40932.44,
+    "page": 552,
+    "label": "Total Non-current Liabilities"
+   },
+   "current_liabilities": {
+    "value": 9922.68,
+    "page": 552,
+    "label": "Total Current Liabilities"
+   },
+   "inventories": {
+    "value": 625.24,
+    "page": 552,
+    "label": "Inventories"
+   },
+   "trade_receivables": {
+    "value": 4217.86,
+    "page": 552,
+    "label": "Trade Receivables"
+   },
+   "cash_and_equivalents": {
+    "value": 2190.38,
+    "page": 552,
+    "label": "Cash and Cash Equivalents"
+   },
+   "revenue": {
+    "value": 23767.09,
+    "page": 553,
+    "label": "Revenue from Operations"
+   },
+   "other_income": {
+    "value": 679.46,
+    "page": 553,
+    "label": "Other Income"
+   },
+   "total_income": {
+    "value": 24446.55,
+    "page": 553,
+    "label": "Total Income"
+   },
+   "total_expenses": {
+    "value": 20524.93,
+    "page": 553,
+    "label": "Total (Expenses)"
+   },
+   "employee_costs": {
+    "value": 1032.94,
+    "page": 553,
+    "label": "Employee Benefits Expense"
+   },
+   "finance_costs": {
+    "value": 3259.16,
+    "page": 553,
+    "label": "Finance Costs"
+   },
+   "depreciation": {
+    "value": 1905.95,
+    "page": 553,
+    "label": "Depreciation and Amortisation Expense"
+   },
+   "profit_before_tax": {
+    "value": 1074.85,
+    "page": 553,
+    "label": "Profit Before Tax and Deferred Assets recoverable/adjustable for the year",
+    "note": "after exceptional item -1,506.02 and regulatory movement -1,340.78"
+   },
+   "tax_expense": {
+    "value": 178.99,
+    "page": 553,
+    "label": "Total Tax expenses"
+   },
+   "net_profit": {
+    "value": 921.69,
+    "page": 553,
+    "label": "Profit After Tax for the year",
+    "note": "PBT 1,074.85 - tax 178.99 = 895.86, + deferred assets recoverable 25.83 = 921.69"
+   },
+   "total_comprehensive_income": {
+    "value": 1107.85,
+    "page": 553,
+    "label": "Total Comprehensive Income for the year"
+   },
+   "eps_basic": {
+    "value": 9.05,
+    "page": 553,
+    "label": "Basic / Diluted Earnings per Equity Share (Face Value of Rs 10 each) after Net movement in Regulatory Deferral Account Balances",
+    "note": "corrected 2026-06-12: reader misread 8.05; visual render Adani_p553.png shows 9.05 (= PAT 921.69 / ~101.8cr shares); 4th misread caught by cross-check"
+   },
+   "cash_from_operations": {
+    "value": 8695.22,
+    "page": 554,
+    "label": "Net cash generated from operating activities (A)"
+   },
+   "cash_from_investing": {
+    "value": -15227.59,
+    "page": 554,
+    "label": "Net cash used in investing activities (B)"
+   },
+   "cash_from_financing": {
+    "value": 7975.22,
+    "page": 555,
+    "label": "Net cash generated from / (used in) financing activities (C)"
+   },
+   "net_change_in_cash": {
+    "value": 1442.85,
+    "page": 555,
+    "label": "Net increase in cash and cash equivalents (A+B+C)"
+   },
+   "closing_cash": {
+    "value": 2190.38,
+    "page": 555,
+    "label": "Cash and cash equivalents at the end of the year",
+    "note": "opening 742.06 + acquired 5.47 + 1,442.85"
+   }
+  }
+ },
+ "Newgen.pdf": {
+  "unit": "SGD (units)",
+  "basis": "standalone (Singapore subsidiary Newgen Software Technologies Pte. Ltd.)",
+  "period": "FY ended 2024-03-31",
+  "metrics": {
+   "total_assets": {
+    "value": 8499970,
+    "page": 9,
+    "label": "TOTAL ASSETS",
+    "provenance": "text-layer, identity-tied (assets = equity+liabilities both 8,499,970)"
+   },
+   "total_equity_and_liabilities": {
+    "value": 8499970,
+    "page": 9,
+    "label": "TOTAL EQUITY AND LIABILITIES",
+    "provenance": "text-layer, identity-tied"
+   },
+   "trade_receivables": {
+    "value": 4100352,
+    "page": 9,
+    "label": "Trade receivables",
+    "provenance": "text-layer"
+   },
+   "cash_and_equivalents": {
+    "value": 4012907,
+    "page": 9,
+    "label": "Cash and bank balances",
+    "provenance": "text-layer"
+   },
+   "revenue": {
+    "value": 14815744,
+    "page": 10,
+    "label": "Revenue",
+    "provenance": "text-layer"
+   },
+   "other_income": {
+    "value": 46768,
+    "page": 10,
+    "label": "Other income",
+    "provenance": "text-layer"
+   },
+   "profit_before_tax": {
+    "value": 524369,
+    "page": 10,
+    "label": "Profit before tax",
+    "provenance": "text-layer, ties to CF opening line (visual)"
+   },
+   "tax_expense": {
+    "value": -105313,
+    "page": 10,
+    "label": "Income tax expense",
+    "note": "printed in parens (negative line); magnitude ties PBT 524,369 - net 419,056",
+    "provenance": "text-layer + identity"
+   },
+   "net_profit": {
+    "value": 419056,
+    "page": 10,
+    "label": "Profit for the year, representing total comprehensive income for the year"
+   },
+   "total_comprehensive_income": {
+    "value": 419056,
+    "page": 10,
+    "label": "same combined line as net profit"
+   },
+   "cash_from_operations": {
+    "value": 698072,
+    "page": 12,
+    "label": "Net cash generated from operating activities",
+    "note": "843,346 'cash generated from operations' is the PRE-TAX line; true total is after income tax paid -145,274"
+   },
+   "cash_from_investing": {
+    "value": -675000,
+    "page": 12,
+    "label": "Net cash used in investing activities"
+   },
+   "net_change_in_cash": {
+    "value": 23072,
+    "page": 12,
+    "label": "Net increase in cash and cash equivalents",
+    "note": "statement has NO financing section"
+   },
+   "closing_cash": {
+    "value": 2651907,
+    "page": 12,
+    "label": "Cash and cash equivalents at the end of the year",
+    "note": "BS cash 4,012,907 differs (pledged deposits excluded from CF basis)"
+   }
+  }
+ },
+ "HDFC.pdf": {
+  "unit": "INR crore",
+  "basis": "consolidated",
+  "period": "FY ended 2025-03-31",
+  "entity_note": "HDFC Bank; Banking Regulation Act Form A/B layout - no current/non-current split, no PBT line (provisions include tax)",
+  "metrics": {
+   "total_assets": {
+    "value": 4392417.42,
+    "page": 441,
+    "label": "Total (Assets)"
+   },
+   "total_equity_and_liabilities": {
+    "value": 4392417.42,
+    "page": 441,
+    "label": "Total (Capital and Liabilities)"
+   },
+   "revenue": {
+    "value": 336367.43,
+    "page": 442,
+    "label": "Interest earned",
+    "note": "bank-format closest equivalent of revenue"
+   },
+   "other_income": {
+    "value": 134548.5,
+    "page": 442,
+    "label": "Other income"
+   },
+   "total_income": {
+    "value": 470915.93,
+    "page": 442,
+    "label": "Total (I. INCOME)"
+   },
+   "total_expenses": {
+    "value": 397475.76,
+    "page": 442,
+    "label": "Total (II. EXPENDITURE)",
+    "note": "includes provisions & contingencies (which embed tax)"
+   },
+   "net_profit": {
+    "value": 73440.17,
+    "page": 442,
+    "label": "Consolidated Net Profit for the year before Minority Interest",
+    "note": "group share after MI: 70,792.25"
+   },
+   "eps_basic": {
+    "value": 92.81,
+    "page": 442,
+    "label": "Earnings per equity share Basic"
+   },
+   "cash_from_operations": {
+    "value": 127241.84,
+    "page": 443,
+    "label": "Net cash flows from operating activities"
+   },
+   "cash_from_investing": {
+    "value": -3850.64,
+    "page": 443,
+    "label": "Net cash flow from / (used in) investing activities"
+   },
+   "cash_from_financing": {
+    "value": -102477.54,
+    "page": 444,
+    "label": "Net cash flow used in financing activities"
+   },
+   "fx_effect_on_cash": {
+    "value": 199.73,
+    "page": 444,
+    "label": "Effect of fluctuation in foreign currency translation reserve"
+   },
+   "net_change_in_cash": {
+    "value": 21113.39,
+    "page": 444,
+    "label": "Net increase in cash and cash equivalents"
+   },
+   "closing_cash": {
+    "value": 249947.9,
+    "page": 444,
+    "label": "Cash and cash equivalents at the end of the year"
+   }
+  }
+ },
+ "Wilmar.pdf": {
+  "unit": "USD thousand",
+  "basis": "consolidated (Group columns)",
+  "period": "FY ended 2025-12-31",
+  "metrics": {
+   "total_assets": {
+    "value": 65641775,
+    "page": 20,
+    "label": "TOTAL ASSETS"
+   },
+   "total_equity_and_liabilities": {
+    "value": 65641775,
+    "page": 21,
+    "label": "TOTAL EQUITY AND LIABILITIES"
+   },
+   "total_equity": {
+    "value": 25060843,
+    "page": 21,
+    "label": "TOTAL EQUITY",
+    "note": "owners 21,865,270 + NCI 3,195,573"
+   },
+   "total_liabilities": {
+    "value": 40580932,
+    "page": 21,
+    "label": "TOTAL LIABILITIES"
+   },
+   "non_current_assets": {
+    "value": 29561036,
+    "page": 20,
+    "label": "Non-current assets subtotal"
+   },
+   "current_assets": {
+    "value": 36080739,
+    "page": 20,
+    "label": "Current assets subtotal"
+   },
+   "non_current_liabilities": {
+    "value": 8452693,
+    "page": 21,
+    "label": "Non-current liabilities subtotal"
+   },
+   "current_liabilities": {
+    "value": 32128239,
+    "page": 20,
+    "label": "Current liabilities subtotal"
+   },
+   "inventories": {
+    "value": 14652606,
+    "page": 20,
+    "label": "Inventories"
+   },
+   "trade_receivables": {
+    "value": 7351231,
+    "page": 20,
+    "label": "Trade receivables"
+   },
+   "cash_and_equivalents": {
+    "value": 2889720,
+    "page": 20,
+    "label": "Cash and bank balances"
+   },
+   "revenue": {
+    "value": 70415698,
+    "page": 18,
+    "label": "Revenue"
+   },
+   "finance_costs": {
+    "value": -1077353,
+    "page": 18,
+    "label": "Finance costs",
+    "note": "printed negative (parens)"
+   },
+   "profit_before_tax": {
+    "value": 2089815,
+    "page": 18,
+    "label": "Profit before tax"
+   },
+   "tax_expense": {
+    "value": -532615,
+    "page": 18,
+    "label": "Income tax expense",
+    "note": "printed negative (parens)"
+   },
+   "net_profit": {
+    "value": 1557200,
+    "page": 18,
+    "label": "Profit after tax"
+   },
+   "eps_basic": {
+    "value": 22.6,
+    "page": 18,
+    "label": "Earnings per share basic (US cents)"
+   },
+   "cash_from_operations": {
+    "value": 2361798,
+    "page": 25,
+    "label": "Net cash flows generated from operating activities"
+   },
+   "cash_from_investing": {
+    "value": -3982778,
+    "page": 26,
+    "label": "Net cash flows used in investing activities",
+    "note": "verified via identity: 2,361,798 - 3,982,778 + 1,200,953 = -420,027"
+   },
+   "cash_from_financing": {
+    "value": 1200953,
+    "page": 26,
+    "label": "Net cash flows generated from/(used in) financing activities"
+   },
+   "net_change_in_cash": {
+    "value": -420027,
+    "page": 26,
+    "label": "Net decrease in cash and cash equivalents"
+   },
+   "closing_cash": {
+    "value": 2622701,
+    "page": 26,
+    "label": "Cash and cash equivalents at the end of the year",
+    "note": "BS cash and bank balances 2,889,720 differs (CF basis)"
+   }
+  }
+ },
+ "BHEL_2024-25.pdf": {
+  "unit": "INR crore",
+  "basis": "consolidated",
+  "period": "FY ended 2025-03-31",
+  "metrics": {
+   "total_assets": {
+    "value": 68083.18,
+    "page": 264,
+    "label": "TOTAL ASSETS"
+   },
+   "total_equity_and_liabilities": {
+    "value": 68083.18,
+    "page": 265,
+    "label": "TOTAL EQUITY AND LIABILITIES"
+   },
+   "total_equity": {
+    "value": 24722.16,
+    "page": 264,
+    "label": "Total Equity"
+   },
+   "current_assets": {
+    "value": 42759.77,
+    "page": 264,
+    "label": "Total current assets"
+   },
+   "non_current_assets": {
+    "value": 25323.41,
+    "page": 264,
+    "label": "Total non-current assets"
+   },
+   "current_liabilities": {
+    "value": 28225.74,
+    "page": 265,
+    "label": "Total current liabilities"
+   },
+   "non_current_liabilities": {
+    "value": 15135.43,
+    "page": 265,
+    "label": "Total non-current liabilities"
+   },
+   "total_liabilities": {
+    "value": 43361.17,
+    "page": 265,
+    "label": "Total liabilities"
+   },
+   "inventories": {
+    "value": 9869.49,
+    "page": 264,
+    "label": "Inventories",
+    "note": "BS has a Page cross-ref column between Note and value (Inventories|10|289|9869.49); extractor grabbed page-ref 289"
+   },
+   "trade_receivables": {
+    "value": 5884.35,
+    "page": 264,
+    "label": "Trade receivables (current)"
+   },
+   "cash_and_equivalents": {
+    "value": 439.21,
+    "page": 264,
+    "label": "Cash and cash equivalents",
+    "note": "ties CF closing cash 439.21"
+   },
+   "revenue": {
+    "value": 28339.48,
+    "page": 266,
+    "label": "Revenue from operations"
+   },
+   "other_income": {
+    "value": 465.31,
+    "page": 266,
+    "label": "Other income"
+   },
+   "total_income": {
+    "value": 28804.79,
+    "page": 266,
+    "label": "TOTAL INCOME"
+   },
+   "total_expenses": {
+    "value": 28118.2,
+    "page": 266,
+    "label": "TOTAL EXPENSES"
+   },
+   "employee_costs": {
+    "value": 5923.42,
+    "page": 266,
+    "label": "Employee benefits expense"
+   },
+   "finance_costs": {
+    "value": 748.33,
+    "page": 266,
+    "label": "Finance costs"
+   },
+   "depreciation": {
+    "value": 271.96,
+    "page": 266,
+    "label": "Depreciation & amortisation expense"
+   },
+   "profit_before_tax": {
+    "value": 745.6,
+    "page": 266,
+    "label": "PROFIT BEFORE TAX"
+   },
+   "tax_expense": {
+    "value": 211.7,
+    "page": 266,
+    "label": "Tax expenses (current 23.16 + deferred 188.54)"
+   },
+   "net_profit": {
+    "value": 533.9,
+    "page": 266,
+    "label": "PROFIT FOR THE YEAR (A)"
+   },
+   "total_comprehensive_income": {
+    "value": 370.56,
+    "page": 266,
+    "label": "TOTAL COMPREHENSIVE INCOME FOR THE YEAR (A+B)"
+   },
+   "cash_from_operations": {
+    "value": 2191.89,
+    "page": 270,
+    "label": "Net cash from operating activities"
+   },
+   "cash_from_investing": {
+    "value": -2730.91,
+    "page": 270,
+    "label": "Net cash used in investing activities"
+   },
+   "cash_from_financing": {
+    "value": -856.81,
+    "page": 271,
+    "label": "Net cash used in financing activities"
+   },
+   "net_change_in_cash": {
+    "value": -1395.83,
+    "page": 271,
+    "label": "Net increase/(decrease) in cash"
+   },
+   "closing_cash": {
+    "value": 439.21,
+    "page": 271,
+    "label": "Closing balance of cash and cash equivalents [Note 11]"
+   }
+  }
+ },
+ "Bajaj-Finance-2025.pdf": {
+  "unit": "INR crore",
+  "basis": "consolidated",
+  "period": "FY ended 2025-03-31",
+  "note": "NBFC (RBI Schedule III): financial/non-financial asset split, no current/non-current classification, no inventories - those metrics are genuinely not printed and are omitted from golden",
+  "metrics": {
+   "total_assets": {
+    "value": 466126.83,
+    "page": 368,
+    "label": "Total assets"
+   },
+   "total_equity_and_liabilities": {
+    "value": 466126.83,
+    "page": 369,
+    "label": "Total equity and liabilities"
+   },
+   "total_equity": {
+    "value": 98936.89,
+    "page": 369,
+    "label": "Total Equity (incl NCI 2244.02)"
+   },
+   "total_liabilities": {
+    "value": 367189.94,
+    "page": 369,
+    "label": "derived: total - equity"
+   },
+   "cash_and_equivalents": {
+    "value": 3642.46,
+    "page": 368,
+    "label": "Cash and cash equivalents",
+    "note": "ties CF closing 3642.46"
+   },
+   "trade_receivables": {
+    "value": 1913.11,
+    "page": 368,
+    "label": "Trade receivables"
+   },
+   "revenue": {
+    "value": 69685.51,
+    "page": 370,
+    "label": "Total revenue from operations"
+   },
+   "other_income": {
+    "value": 39.27,
+    "page": 370,
+    "label": "Other income",
+    "note": "TRAP: extractor matched Other operating income 1418.92 (note 30) instead of Other income 39.27 (note 31)"
+   },
+   "total_income": {
+    "value": 69724.78,
+    "page": 370,
+    "label": "Total income"
+   },
+   "total_expenses": {
+    "value": 47662.96,
+    "page": 370,
+    "label": "Total expenses"
+   },
+   "finance_costs": {
+    "value": 24770.79,
+    "page": 370,
+    "label": "Finance costs"
+   },
+   "employee_costs": {
+    "value": 6396.01,
+    "page": 370,
+    "label": "Employee benefits expense"
+   },
+   "depreciation": {
+    "value": 880.99,
+    "page": 370,
+    "label": "Depreciation and amortisation expenses"
+   },
+   "profit_before_tax": {
+    "value": 22079.63,
+    "page": 370,
+    "label": "Profit before tax"
+   },
+   "tax_expense": {
+    "value": 5300.18,
+    "page": 370,
+    "label": "Total tax expense"
+   },
+   "net_profit": {
+    "value": 16779.45,
+    "page": 370,
+    "label": "Profit after tax"
+   },
+   "total_comprehensive_income": {
+    "value": 16712.42,
+    "page": 370,
+    "label": "Total comprehensive income for the year"
+   },
+   "eps_basic": {
+    "value": 268.94,
+    "page": 371,
+    "label": "Earnings per equity share - Basic"
+   },
+   "cash_from_operations": {
+    "value": -68154.47,
+    "page": 374,
+    "label": "Net cash used in operating activities (I)"
+   },
+   "cash_from_investing": {
+    "value": -2765.05,
+    "page": 374,
+    "label": "Net cash used in investing activities (II)"
+   },
+   "cash_from_financing": {
+    "value": 70527.62,
+    "page": 375,
+    "label": "Net cash from financing activities (III)"
+   },
+   "net_change_in_cash": {
+    "value": -392.05,
+    "page": 375,
+    "label": "Net increase/(decrease) in cash (I+II+III)"
+   },
+   "closing_cash": {
+    "value": 3642.46,
+    "page": 375,
+    "label": "Cash and cash equivalents at the end of the year"
+   }
+  }
+ }
+}
