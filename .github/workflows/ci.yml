@@ -1,40 +1,60 @@
 # CI pipeline — runs automatically on every push and every pull request.
-# GitHub spins up a fresh Ubuntu machine, installs the project, lints it, and
-# runs the tests. If anything fails, the commit gets a red X; if all pass, a
-# green check. This is the heart of "continuous integration".
+# Now tests across multiple Python versions in parallel, caches dependencies
+# for speed, and reports a single overall "all green" check.
 name: CI
 
-# WHEN this runs:
 on:
-  push:              # every push to any branch
-  pull_request:      # every PR (so checks show up before you merge)
+  push:
+  pull_request:
 
 jobs:
-  test:                          # one job, named "test"
-    runs-on: ubuntu-latest       # the fresh machine GitHub gives us
+  test:
+    runs-on: ubuntu-latest
+
+    # A MATRIX: GitHub runs this whole job once per value below, in parallel.
+    # So we get three jobs — test (3.11), test (3.12), test (3.13) — and the
+    # code must pass on all of them.
+    strategy:
+      fail-fast: false        # if one version fails, still run the others
+                              # (so you see ALL failures, not just the first)
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
-      # 1. Get our code onto the machine
       - name: Check out the code
         uses: actions/checkout@v4
 
-      # 2. Install the Python we want
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}   # value from the matrix
+          cache: pip          # CACHING: reuse downloaded packages between runs
+                              # instead of re-downloading every time -> faster CI
 
-      # 3. Install dependencies + the CI tools (pytest, ruff)
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest ruff
 
-      # 4. Lint: catch bugs and dead code before running anything
       - name: Lint with ruff
         run: ruff check .
 
-      # 5. Test: run the unit suite (the accounting-proof logic)
       - name: Run tests
         run: pytest -v
+
+  # A GATE job: one job that succeeds only if EVERY matrix job above passed.
+  # We require THIS single check in branch protection, so the protection rule
+  # never breaks when we add/remove Python versions from the matrix.
+  all-green:
+    if: always()              # run even if the matrix failed, so it can report
+    needs: [test]             # wait for all matrix jobs to finish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm every test job passed
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "One or more matrix jobs failed."
+            exit 1
+          fi
+          echo "All matrix jobs passed."
