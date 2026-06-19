@@ -49,14 +49,75 @@ red/green but nothing stopped a red merge.
   check is green. Required check at this point was named `test` (later
   swapped to `all-green` in Level 5).
 
-## Next: Level 6 — CD / deploy stage (planned 2026-06-18)
+## 2026-06-19 — Level 6.3: publish to TestPyPI (OIDC trusted publishing) — IN PROGRESS
 
-The "CD" half. Trigger on a version tag (`on: push: tags: ['v*']`), build a
-wheel, publish it. Prerequisite found: `pyproject.toml` has no
-`[build-system]`/`[project]` table yet, so the project isn't buildable —
-Level 6.1 is making it packageable and proving `python -m build` works
-locally before automating. Secret-free GitHub Release first, then PyPI
-(secrets / OIDC trusted publishing) as the real-world extension.
+Goal: publish to a real package index so the package is `pip install`-able from
+anywhere, using OIDC Trusted Publishing (no stored API token). Shipped the
+workflow change in PR #5; first publish is currently BLOCKED on a registration
+fix (see below).
+
+Changes to `release.yml`:
+- `permissions: id-token: write` — lets GitHub mint the short-lived OIDC token
+  the index verifies. No secret stored anywhere.
+- `environment: testpypi` — must match the trusted-publisher registration.
+- `pypa/gh-action-pypi-publish@release/v1` step with
+  `repository-url: https://test.pypi.org/legacy/` (TestPyPI sandbox first).
+- Bumped version 0.1.0 -> 0.1.1 (an index version is immutable; can't reuse one).
+
+**The gotcha (the real lesson):** the publish failed with
+`invalid-publisher: valid token, but no corresponding publisher`. The OIDC
+token minted fine and the request DID reach TestPyPI (confirmed in the log:
+`repository-url: https://test.pypi.org/legacy/`). The cause is on the website,
+not in code: PyPI matches the token's CLAIMS against the registered publisher
+field-by-field, and one field doesn't match. The claims GitHub sent were:
+owner `Akshu24Tech`, repo `financial-pdf-extraction-agent`, workflow file
+`release.yml`, environment `testpypi`. Prime suspect: PyPI's "Workflow name"
+field wants the FILENAME (`release.yml`), not the `name:` inside the file
+(`Release`). Other suspects: registered on pypi.org instead of test.pypi.org;
+environment typo. Fix is to correct the registration, then `gh run rerun` the
+existing run (tag v0.1.1 already exists; no new tag needed).
+
+## 2026-06-19 — Level 6.2: tag-triggered Release workflow (DONE)
+
+Goal: the actual "CD" half — push a version tag, get a published release with
+artifacts attached, hands-off. Shipped in PR #4.
+
+New `.github/workflows/release.yml` (separate from ci.yml: different trigger,
+different purpose):
+- `on: push: tags: ['v*']` — fires ONLY on a version tag, never on commits.
+- `permissions: contents: write` — least privilege; a release WRITES (creates
+  the Release object), unlike CI which only reads.
+- Builds wheel + sdist (`python -m build`), then `softprops/action-gh-release@v2`
+  attaches `dist/*` and auto-generates notes from merged PRs.
+- One build, no matrix: the wheel is `py3-none-any` (version-independent);
+  matrix was for TESTING, which already happened in CI.
+
+**Proven:** pushed tag `v0.1.0` -> Release v0.1.0 appeared with the wheel + sdist
+attached, downloadable. First end-to-end CD success.
+**Noted:** run warned that the actions target the deprecated Node 20 runtime —
+bump `@v4`/`@v5` action versions when upstream ships updates (action-version
+maintenance is part of owning a pipeline). Also: checks run twice on PRs because
+the workflow triggers on both `push` and `pull_request`.
+
+## 2026-06-18/19 — Level 6.1: make the project pip-installable (DONE)
+
+Goal: turn the folder of `.py` files into a buildable package so CD has
+something to ship. Shipped in PR #3.
+
+- Added `[build-system]` (setuptools backend) + `[project]` metadata
+  (name, version, deps, `requires-python`) to `pyproject.toml`.
+- Dependencies are listed in BOTH `requirements.txt` (dev setup) and
+  `[project].dependencies` (baked into the wheel for installers) — different
+  jobs, mirrored by hand.
+- Gitignored `build/` and `dist/`.
+
+**The gotcha (the real lesson):** first build "succeeded" but the wheel was
+BROKEN — `packages = ["finagent"]` shipped only the top-level package and
+silently DROPPED the `finagent.extractors` subpackage. A build can succeed and
+still ship an un-importable package — always inspect what's inside the wheel.
+Fix: auto-discovery via `[tool.setuptools.packages.find]` with
+`include = ["finagent*"]` (also keeps tests/ and golden/ out). Verified
+`finagent/extractors/` is in the rebuilt wheel; `twine check dist/*` PASSED.
 
 ---
 

@@ -1,6 +1,7 @@
 # Financial PDF Extraction Agent (v2)
 
 [![CI](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/actions/workflows/ci.yml)
+[![Release](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/actions/workflows/release.yml/badge.svg)](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/releases)
 
 Give it any company's annual-report PDF. It finds the financial statements,
 pulls out the key numbers, **proves each one is correct**, and writes a tidy
@@ -94,6 +95,42 @@ never hand over a confident-but-wrong number.
 
 Output lands in `output\<Company>_metrics.xlsx`. All commands use the project
 venv (`.venv`). First-time setup: `pip install -r requirements.txt`.
+
+---
+
+## Install a released build
+
+The project is packaged as a wheel and published on a version tag. Grab a
+build from the [Releases page](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/releases)
+and install it:
+
+```powershell
+pip install finagent-0.1.0-py3-none-any.whl
+```
+
+(TestPyPI publishing via OIDC trusted publishing is being wired up — once live,
+`pip install -i https://test.pypi.org/simple/ finagent` will work directly.)
+
+---
+
+## CI/CD
+
+This repo doubles as a hands-on CI/CD build-out (tracked level-by-level in
+[`WORKLOG.md`](WORKLOG.md)):
+
+- **CI** (`.github/workflows/ci.yml`) — every push and PR runs `ruff` + `pytest`
+  across Python 3.11 / 3.12 / 3.13 in parallel, with pip caching. A single
+  `all-green` check gates merges; `main` is branch-protected, so broken code
+  cannot merge.
+- **CD** (`.github/workflows/release.yml`) — pushing a `vX.Y.Z` tag builds the
+  wheel + sdist and publishes a GitHub Release with the artifacts attached.
+
+Cut a release:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
 
 ---
 
