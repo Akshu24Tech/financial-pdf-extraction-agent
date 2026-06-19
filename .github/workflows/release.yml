@@ -11,11 +11,16 @@ on:
 # A release WRITES to the repo (creates the Release). CI only reads, so it
 # needed nothing. Least privilege: grant exactly this and no more.
 permissions:
-  contents: write
+  contents: write     # create the GitHub Release
+  id-token: write     # mint the short-lived OIDC token TestPyPI/PyPI verifies
+                      # for Trusted Publishing (no stored password/secret)
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    # A named deployment target. MUST match the environment registered as the
+    # trusted publisher on TestPyPI. Also where you can later add approval gates.
+    environment: testpypi
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
@@ -30,6 +35,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip build
           python -m build          # produces dist/*.whl and dist/*.tar.gz
+
+      - name: Publish to TestPyPI
+        # Official PyPA action. Reads dist/*, does the whole OIDC handshake.
+        # repository-url points at TestPyPI; drop this line to target real PyPI.
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
