@@ -1,26 +1,24 @@
-# CD pipeline — runs ONLY when you push a version tag (e.g. v0.1.0).
-# Builds the package and publishes a GitHub Release with the artifacts.
-# Separate from ci.yml: different trigger, different job, different purpose.
+# CD pipeline — runs ONLY when you push a version tag (e.g. v0.2.0).
+# Build the package ONCE, then publish it to several places in parallel:
+#   - TestPyPI (rehearsal sandbox)
+#   - real PyPI (the public index)
+#   - a GitHub Release (artifacts attached)
+# Separate from ci.yml: different trigger, different jobs, different purpose.
 name: Release
 
 on:
   push:
     tags:
-      - "v*"          # v0.1.0, v1.2.3, ... normal commits never trigger this
-
-# A release WRITES to the repo (creates the Release). CI only reads, so it
-# needed nothing. Least privilege: grant exactly this and no more.
-permissions:
-  contents: write     # create the GitHub Release
-  id-token: write     # mint the short-lived OIDC token TestPyPI/PyPI verifies
-                      # for Trusted Publishing (no stored password/secret)
+      - "v*"          # v0.2.0, v1.2.3, ... normal commits never trigger this
 
 jobs:
-  release:
+  # ---------------------------------------------------------------------------
+  # 1) BUILD ONCE. The wheel/sdist are identical no matter where they go, so we
+  # build a single time and hand the same files to every publish job. This is
+  # the "build once, deploy many" pattern.
+  # ---------------------------------------------------------------------------
+  build:
     runs-on: ubuntu-latest
-    # A named deployment target. MUST match the environment registered as the
-    # trusted publisher on TestPyPI. Also where you can later add approval gates.
-    environment: testpypi
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
@@ -28,23 +26,81 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"   # one build is enough: the wheel is
-                                   # py3-none-any (version-independent)
+          python-version: "3.12"   # one build is enough: wheel is py3-none-any
 
       - name: Build wheel + sdist
         run: |
           python -m pip install --upgrade pip build
           python -m build          # produces dist/*.whl and dist/*.tar.gz
 
+      - name: Upload the built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/             # the publish jobs download this exact dir
+
+  # ---------------------------------------------------------------------------
+  # 2) PUBLISH TO TESTPYPI — the rehearsal. Its own job so it can carry its own
+  # environment (testpypi) and only the id-token permission it needs.
+  # ---------------------------------------------------------------------------
+  publish-testpypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi      # matches the TestPyPI trusted-publisher registration
+    permissions:
+      id-token: write          # least privilege: only what OIDC publishing needs
+    steps:
+      - name: Download the built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
       - name: Publish to TestPyPI
-        # Official PyPA action. Reads dist/*, does the whole OIDC handshake.
-        # repository-url points at TestPyPI; drop this line to target real PyPI.
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          skip-existing: true    # don't fail if this version is already on TestPyPI
+
+  # ---------------------------------------------------------------------------
+  # 3) PUBLISH TO REAL PyPI — the public index. No repository-url = real PyPI.
+  # Its own environment (pypi) so its trusted-publisher claim is distinct.
+  # ---------------------------------------------------------------------------
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi          # matches the PyPI trusted-publisher registration
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # no repository-url -> defaults to https://upload.pypi.org/legacy/
+
+  # ---------------------------------------------------------------------------
+  # 4) GITHUB RELEASE — attach the artifacts + auto-generate notes. Needs write
+  # access to the repo (to create the Release), nothing to do with PyPI.
+  # ---------------------------------------------------------------------------
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write          # create the GitHub Release
+    steps:
+      - name: Download the built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*                 # attach wheel + sdist to the Release
+          files: dist/*                 # attach wheel + sdist
           generate_release_notes: true  # auto-notes from merged PRs
