@@ -10,8 +10,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 # WHAT the package is — its public identity / metadata.
-name = "finagent"
-version = "0.1.1"
+# Distribution name on PyPI (must be globally unique + not "too similar" to an
+# existing project). The IMPORT name stays `finagent` (the package dir) — PyPI
+# name and import name are allowed to differ.
+name = "akshu-finagent"
+version = "0.2.0"
 description = "Financial statement PDF extraction agent"
 readme = "README.md"
 requires-python = ">=3.11"
