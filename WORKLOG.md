@@ -49,12 +49,13 @@ red/green but nothing stopped a red merge.
   check is green. Required check at this point was named `test` (later
   swapped to `all-green` in Level 5).
 
-## 2026-06-19 — Level 6.3: publish to TestPyPI (OIDC trusted publishing) — IN PROGRESS
+## 2026-06-19 — Level 6.3: publish to TestPyPI (OIDC trusted publishing) — DONE
 
 Goal: publish to a real package index so the package is `pip install`-able from
 anywhere, using OIDC Trusted Publishing (no stored API token). Shipped the
-workflow change in PR #5; first publish is currently BLOCKED on a registration
-fix (see below).
+workflow change in PR #5. First publish was BLOCKED on a registration mismatch;
+fixed it and `finagent 0.1.1` is now live on TestPyPI (full `Release` run green:
+build + Publish to TestPyPI + Publish GitHub Release, run 27831682393).
 
 Changes to `release.yml`:
 - `permissions: id-token: write` — lets GitHub mint the short-lived OIDC token
@@ -64,18 +65,24 @@ Changes to `release.yml`:
   `repository-url: https://test.pypi.org/legacy/` (TestPyPI sandbox first).
 - Bumped version 0.1.0 -> 0.1.1 (an index version is immutable; can't reuse one).
 
-**The gotcha (the real lesson):** the publish failed with
+**The gotcha (the real lesson):** the first publish failed with
 `invalid-publisher: valid token, but no corresponding publisher`. The OIDC
 token minted fine and the request DID reach TestPyPI (confirmed in the log:
-`repository-url: https://test.pypi.org/legacy/`). The cause is on the website,
+`repository-url: https://test.pypi.org/legacy/`). The cause was on the website,
 not in code: PyPI matches the token's CLAIMS against the registered publisher
-field-by-field, and one field doesn't match. The claims GitHub sent were:
+field-by-field, and one field didn't match. The claims GitHub sent were:
 owner `Akshu24Tech`, repo `financial-pdf-extraction-agent`, workflow file
-`release.yml`, environment `testpypi`. Prime suspect: PyPI's "Workflow name"
-field wants the FILENAME (`release.yml`), not the `name:` inside the file
-(`Release`). Other suspects: registered on pypi.org instead of test.pypi.org;
-environment typo. Fix is to correct the registration, then `gh run rerun` the
-existing run (tag v0.1.1 already exists; no new tag needed).
+`release.yml`, environment `testpypi`. The mismatch was PyPI's "Workflow name"
+field — it wants the FILENAME (`release.yml`), not the `name:` inside the file
+(`Release`). **Fix:** corrected the trusted-publisher registration on
+test.pypi.org, then `gh run rerun 27831682393 --failed` (tag v0.1.1 already
+existed; no new tag needed) — went green on the retry. Key takeaways: a failed
+publish does NOT consume the version, so 0.1.1 was reusable; and `invalid-publisher`
+is always a registration/claims mismatch, never a code bug.
+
+**Next:** real PyPI (drop `repository-url`, register a publisher on pypi.org);
+optionally an environment approval gate; bump action versions to clear the
+Node 20 deprecation warning.
 
 ## 2026-06-19 — Level 6.2: tag-triggered Release workflow (DONE)
 
