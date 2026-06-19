@@ -11,6 +11,37 @@ Newest entries at the top. Benchmark = `benchmark.py` over the 8 test PDFs
 Using this repo as a hands-on CI/CD practice ground now that extraction is
 saturated. Numbered as "levels". Newest at top.
 
+## 2026-06-19 — Level 6.4: publish to REAL PyPI (DONE)
+
+Goal: ship the package to the public PyPI so anyone can `pip install` it.
+Shipped in PRs #8 and #9. `akshu-finagent 0.2.0` is LIVE on pypi.org.
+
+Restructured `release.yml` into **build once, publish many**: one `build` job
+builds the wheel + sdist and uploads them as an artifact; separate jobs
+download that same artifact and publish to PyPI and a GitHub Release. Each
+publish job carries its own `environment` (`pypi`) and only the permission it
+needs (`id-token` or `contents`) — per-job least privilege. Bumped 0.1.1 ->
+0.2.0 (fresh version on a new project name).
+
+**Gotcha 1 — PyPI name guard:** `pypi.org/pypi/finagent/json` returned 404
+(name unclaimed), but registering it was rejected: "too similar to an existing
+project." PyPI has a typosquat guard ON TOP of the exact-name check — a 404
+does NOT mean the name is allowed. Renamed the DISTRIBUTION to `akshu-finagent`
+(one line: `[project].name`); the IMPORT name stays `finagent` (PyPI name and
+import name may differ). Knock-on: trusted publishers are per-project-name, so
+the rename required re-registering pending publishers under the new name.
+
+**Gotcha 2 — trusted-publisher claim collision:** tried to keep TestPyPI +
+PyPI both. PyPI succeeded; TestPyPI failed with `400 Non-user identities
+cannot create new projects`. The OLD `finagent` TestPyPI project (from 6.3)
+had a trusted publisher with IDENTICAL OIDC claims
+(owner/repo/`release.yml`/`testpypi`), so the token matched it and refused to
+create `akshu-finagent` through it. Two publishers with identical claims
+collide. Dropped the TestPyPI job (PR #9) — the sandbox had served its purpose.
+
+**Next:** an environment approval gate; bump action versions to clear the
+Node 20 deprecation warning.
+
 ## 2026-06-17 — Level 5: matrix + caching + the gate-rename gotcha
 
 Goal: prove the code works on more than one Python version, and speed CI up.
