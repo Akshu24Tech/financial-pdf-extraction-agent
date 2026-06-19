@@ -2,6 +2,41 @@
 # the same rules run locally and in CI — no drift between your machine and the
 # pipeline.
 
+[build-system]
+# WHO builds the package. setuptools is the standard, batteries-included
+# backend. `python -m build` reads this section first to know how to package.
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# WHAT the package is — its public identity / metadata.
+name = "finagent"
+version = "0.1.0"
+description = "Financial statement PDF extraction agent"
+readme = "README.md"
+requires-python = ">=3.11"
+# Baked INTO the wheel so `pip install` pulls these automatically.
+# (Mirrors requirements.txt, which is only for local dev setup — that file is
+# not read at install time.)
+dependencies = [
+    "pdfplumber>=0.11",
+    "pypdf>=6.0",
+    "openpyxl>=3.1",
+    "rapidfuzz>=3.14",
+]
+
+[tool.setuptools]
+# The standalone single-file module at the repo root.
+py-modules = ["finagent_single"]
+
+# Auto-discover finagent AND its subpackages (finagent.extractors, plus any
+# added later). Hand-listing `packages = ["finagent"]` silently dropped the
+# extractors subpackage from the wheel — a build can "succeed" yet ship a
+# broken, un-importable package. The `finagent*` filter also keeps tests/ and
+# golden/ OUT of the distribution.
+[tool.setuptools.packages.find]
+include = ["finagent*"]
+
 [tool.ruff]
 line-length = 100
 
