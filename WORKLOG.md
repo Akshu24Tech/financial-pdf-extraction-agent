@@ -6,6 +6,60 @@ Newest entries at the top. Benchmark = `benchmark.py` over the 8 test PDFs
 
 ---
 
+# CI/CD learning track (separate from extraction)
+
+Using this repo as a hands-on CI/CD practice ground now that extraction is
+saturated. Numbered as "levels". Newest at top.
+
+## 2026-06-17 — Level 5: matrix + caching + the gate-rename gotcha
+
+Goal: prove the code works on more than one Python version, and speed CI up.
+Done through the proper branch -> PR -> merge flow learned in Level 4.
+Shipped in PR #2.
+
+Three changes to `.github/workflows/ci.yml`:
+1. **Matrix** (`strategy.matrix.python-version: ["3.11","3.12","3.13"]`) — the
+   test job runs three times in parallel, one per version.
+   `fail-fast: false` so if one version breaks, the others still run and you
+   see every failure at once.
+2. **pip caching** (`cache: pip` on setup-python) — first run saves the
+   downloaded packages, later runs reuse them. Free speed-up.
+3. **`all-green` gate job** — the fix for the gotcha below.
+
+**The gotcha (the real lesson):** adding a matrix RENAMES the status checks
+from `test` to `test (3.11)`, `test (3.12)`, `test (3.13)`. The branch-
+protection rule from Level 4 required a check literally named `test`, which
+no longer exists — so it would block every PR forever. Fix: the `all-green`
+job (`if: always()`, `needs: [test]`) passes only if all matrix jobs passed,
+and we require THAT single check in branch protection. Now Python versions
+can change anytime without touching the protection rule.
+
+(PR #1 earlier added `.gitattributes` to normalise line endings.)
+
+## 2026-06-17 — Level 4: branch protection = make CI a real gate
+
+Goal: broken code physically cannot reach `main`. Before this, CI showed
+red/green but nothing stopped a red merge.
+
+- Set the branch-protection rule on `main` via `gh api` (command line, not
+  the website) — defining infra as commands is itself a core CI/CD skill:
+  reproducible and reviewable.
+- Rule does two things: (1) no pushing straight to `main` — changes go
+  through a Pull Request; (2) a PR can't merge unless the required status
+  check is green. Required check at this point was named `test` (later
+  swapped to `all-green` in Level 5).
+
+## Next: Level 6 — CD / deploy stage (planned 2026-06-18)
+
+The "CD" half. Trigger on a version tag (`on: push: tags: ['v*']`), build a
+wheel, publish it. Prerequisite found: `pyproject.toml` has no
+`[build-system]`/`[project]` table yet, so the project isn't buildable —
+Level 6.1 is making it packageable and proving `python -m build` works
+locally before automating. Secret-free GitHub Release first, then PyPI
+(secrets / OIDC trusted publishing) as the real-world extension.
+
+---
+
 ## 2026-06-12 — **GOLDEN 180/180** (final-four round)
 
 **Categories (3) + one golden correction:**
