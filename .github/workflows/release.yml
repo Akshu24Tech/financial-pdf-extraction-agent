@@ -40,30 +40,7 @@ jobs:
           path: dist/             # the publish jobs download this exact dir
 
   # ---------------------------------------------------------------------------
-  # 2) PUBLISH TO TESTPYPI — the rehearsal. Its own job so it can carry its own
-  # environment (testpypi) and only the id-token permission it needs.
-  # ---------------------------------------------------------------------------
-  publish-testpypi:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: testpypi      # matches the TestPyPI trusted-publisher registration
-    permissions:
-      id-token: write          # least privilege: only what OIDC publishing needs
-    steps:
-      - name: Download the built artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          skip-existing: true    # don't fail if this version is already on TestPyPI
-
-  # ---------------------------------------------------------------------------
-  # 3) PUBLISH TO REAL PyPI — the public index. No repository-url = real PyPI.
+  # 2) PUBLISH TO REAL PyPI — the public index. No repository-url = real PyPI.
   # Its own environment (pypi) so its trusted-publisher claim is distinct.
   # ---------------------------------------------------------------------------
   publish-pypi:
@@ -84,7 +61,7 @@ jobs:
         # no repository-url -> defaults to https://upload.pypi.org/legacy/
 
   # ---------------------------------------------------------------------------
-  # 4) GITHUB RELEASE — attach the artifacts + auto-generate notes. Needs write
+  # 3) GITHUB RELEASE — attach the artifacts + auto-generate notes. Needs write
   # access to the repo (to create the Release), nothing to do with PyPI.
   # ---------------------------------------------------------------------------
   github-release:
