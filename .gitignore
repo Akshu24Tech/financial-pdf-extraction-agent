@@ -2,6 +2,10 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+
+# --- Build artifacts (regenerable via `python -m build`; published by CD) ---
+build/
+dist/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
