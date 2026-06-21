@@ -34,12 +34,23 @@ METRICS = {
     },
     "depreciation": {
         "statement": "PL",
+        # also matchable on the Cash Flow statement: function-of-expense P&Ls
+        # (Newgen, HDFC) never print depreciation on the P&L — it only surfaces
+        # as the first non-cash add-back in the CF reconciliation. The CF
+        # wording ("depreciation of/on ...") is added so it is found there too.
+        "also_on": ["CF"],
         "synonyms": ["depreciation and amortisation expense", "depreciation and amortization",
                      "depreciation, amortisation and impairment",
-                     "depreciation amortisation and depletion expense"],
+                     "depreciation amortisation and depletion expense",
+                     "depreciation of plant and equipment",
+                     "depreciation on fixed assets",
+                     "depreciation and amortisation"],
     },
     "finance_costs": {
         "statement": "PL",
+        # also on CF: same rationale as depreciation — appears as an add-back in
+        # the operating-activities reconciliation when the P&L groups it away
+        "also_on": ["CF"],
         "synonyms": ["finance costs", "finance cost", "interest expense", "borrowing costs"],
     },
     "profit_before_tax": {
@@ -202,4 +213,8 @@ ALL_METRICS = list(METRICS)
 EXPECTED_METRICS = [m for m, d in METRICS.items() if not d.get("optional")]
 
 def metrics_for_statement(code):
-    return [m for m, d in METRICS.items() if d["statement"] == code]
+    """Metrics that may be matched on a statement: those that primarily live
+    there, plus any whose `also_on` lists it (a metric that legitimately
+    appears on more than one statement, e.g. depreciation on both P&L and CF)."""
+    return [m for m, d in METRICS.items()
+            if d["statement"] == code or code in d.get("also_on", [])]

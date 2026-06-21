@@ -8,8 +8,48 @@ from pathlib import Path
 
 from . import profiler, locator, normalizer
 from .extractors import geometric
-from .schema import EXPECTED_METRICS, metrics_for_statement
+from .schema import EXPECTED_METRICS, METRICS, metrics_for_statement
 from .validator import Validator
+
+
+def _extract_basis(pdf_path, locations, log, label):
+    """Run extract -> normalize -> validate -> derive for one set of statement
+    locations (one basis). Returns (report, {metric: Extraction})."""
+    from .deriver import derive
+
+    v = Validator(expected_metrics=EXPECTED_METRICS)
+    all_extractions = {}
+    for code, loc in locations.items():
+        if not loc.page_indices:
+            continue
+        raw = geometric.extract(pdf_path, loc.page_indices,
+                                cue_pats=locator.STATEMENT_SIGNATURES[code][1])
+        extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
+        log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
+        for metric, ext in extractions.items():
+            # A metric matched on a NON-native statement (via `also_on`, e.g.
+            # depreciation found in the CF add-backs) is a FALLBACK only: take
+            # it solely when the native statement didn't yield the metric.
+            # Statements iterate BS->PL->CF, so the native reading always lands
+            # first. This keeps the clean P&L value where it exists (BHEL,
+            # Wilmar) and only fills the gap where the P&L groups it away
+            # (Newgen, HDFC) — without a second, conflicting vote.
+            if METRICS[metric]["statement"] != code and metric in all_extractions:
+                continue
+            all_extractions[metric] = ext
+            v.add(metric, ext.value, source=ext.source, page=ext.page,
+                  label_text=ext.raw_label)
+
+    # 6. validate, then 6b. derive what the identities fix exactly.
+    # Order matters: derived values must never feed the identity proofs —
+    # they satisfy the deriving identity by construction.
+    report = derive(v.validate())
+    return report, all_extractions
+
+
+def _sheet_name(basis):
+    return {"consolidated": "Consolidated", "standalone": "Standalone"}.get(
+        basis, "Financials")
 
 
 def run(pdf_path, out_path=None, verbose=True):
@@ -24,44 +64,41 @@ def run(pdf_path, out_path=None, verbose=True):
     doc = profiler.profile(pdf_path)
     log(f"[profile] {doc.summary()}")
 
-    # 3. locate statement pages
-    locations = locator.locate(doc)
-    for code, loc in locations.items():
+    # 3. locate statement pages — PRIMARY (prefers consolidated) plus the
+    # standalone/consolidated counterpart, so both are extracted separately.
+    primary = locator.locate(doc)
+    alternate = locator.locate_alternate(doc, primary)
+    for code, loc in primary.items():
         pages_1based = [i + 1 for i in loc.page_indices]
         log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
+        alt = alternate.get(code)
+        if alt and alt.page_indices:
+            log(f"[locate]   alt {code}: pages {[i + 1 for i in alt.page_indices]} "
+                f"basis={alt.basis} score={alt.score:.1f}")
 
-    # 4. extract + 5. normalize, statement by statement so labels can only
-    # match metrics that belong on that statement
-    v = Validator(expected_metrics=EXPECTED_METRICS)
-    all_extractions = {}
-    for code, loc in locations.items():
-        if not loc.page_indices:
-            continue
-        raw = geometric.extract(pdf_path, loc.page_indices,
-                                cue_pats=locator.STATEMENT_SIGNATURES[code][1])
-        extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
-        log(f"[extract] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
-        for metric, ext in extractions.items():
-            all_extractions[metric] = ext
-            v.add(metric, ext.value, source=ext.source, page=ext.page,
-                  label_text=ext.raw_label)
-
-    # 6. validate, then 6b. derive what the identities fix exactly.
-    # Order matters: derived values must never feed the identity proofs —
-    # they satisfy the deriving identity by construction.
-    report = v.validate()
-    from .deriver import derive
-    report = derive(report)
+    # 4-6b. extract + validate + derive, once per basis. The primary report is
+    # the one returned (backward-compatible with the golden/benchmark harness);
+    # the alternate is the standalone counterpart, shown on its own sheet.
+    primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
+    report, primary_ext = _extract_basis(pdf_path, primary, log,
+                                         _sheet_name(primary_basis).lower())
     if verbose:
         report.print_summary()
 
-    # 7. write
+    sheets = [(_sheet_name(primary_basis), report.to_dict(), primary_ext)]
+    if locator.has_pages(alternate):
+        alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, "standalone")
+        sheets.append((_sheet_name(alternate["BS"].basis if alternate.get("BS")
+                                   and alternate["BS"].page_indices else "standalone"),
+                       alt_report.to_dict(), alt_ext))
+
+    # 7. write — one sheet per basis
     if out_path is None:
         out_path = pdf_path.with_suffix("").name + "_metrics.xlsx"
         out_path = Path("output") / out_path
         out_path.parent.mkdir(exist_ok=True)
     from .writer import write_excel
-    write_excel(report.to_dict(), out_path, extractions=all_extractions,
+    write_excel(sheets, out_path,
                 meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}")
     log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
     return report

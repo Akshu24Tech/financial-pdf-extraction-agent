@@ -70,12 +70,23 @@ METRICS = {
     },
     "depreciation": {
         "statement": "PL",
+        # also matchable on the Cash Flow statement: function-of-expense P&Ls
+        # (Newgen, HDFC) never print depreciation on the P&L — it only surfaces
+        # as the first non-cash add-back in the CF reconciliation. The CF
+        # wording ("depreciation of/on ...") is added so it is found there too.
+        "also_on": ["CF"],
         "synonyms": ["depreciation and amortisation expense", "depreciation and amortization",
                      "depreciation, amortisation and impairment",
-                     "depreciation amortisation and depletion expense"],
+                     "depreciation amortisation and depletion expense",
+                     "depreciation of plant and equipment",
+                     "depreciation on fixed assets",
+                     "depreciation and amortisation"],
     },
     "finance_costs": {
         "statement": "PL",
+        # also on CF: same rationale as depreciation — appears as an add-back in
+        # the operating-activities reconciliation when the P&L groups it away
+        "also_on": ["CF"],
         "synonyms": ["finance costs", "finance cost", "interest expense", "borrowing costs"],
     },
     "profit_before_tax": {
@@ -239,7 +250,11 @@ EXPECTED_METRICS = [m for m, d in METRICS.items() if not d.get("optional")]
 
 
 def metrics_for_statement(code):
-    return [m for m, d in METRICS.items() if d["statement"] == code]
+    """Metrics that may be matched on a statement: those that primarily live
+    there, plus any whose `also_on` lists it (a metric that legitimately
+    appears on more than one statement, e.g. depreciation on both P&L and CF)."""
+    return [m for m, d in METRICS.items()
+            if d["statement"] == code or code in d.get("also_on", [])]
 
 
 # =============================================================================
@@ -490,43 +505,98 @@ def _score_page(text, title_pats, cue_pats):
     return title + cues + min(numbers, 30) * 0.1, basis, bool(title_line)
 
 
-def locate(doc_profile):
-    """Return {statement_code: Location} for BS, PL, CF."""
-    results = {}
-    for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
-        scored = []  # (score, basis, heading, index)
-        for p in doc_profile.pages:
-            if p.text_quality == "EMPTY":
-                continue
-            s, basis, heading = _score_page(p.text, title_pats, cue_pats)
-            if s > 0:
-                scored.append((s, basis, heading, p.index))
-        if not scored:
-            results[code] = Location(code, "unknown", [], 0)
+def _scored_pages(doc_profile, title_pats, cue_pats):
+    """All pages that score as this statement: (score, basis, heading, index)."""
+    scored = []
+    for p in doc_profile.pages:
+        if p.text_quality == "EMPTY":
             continue
-        # heading-titled pages are real statements; pages that merely
-        # discuss the statement (notes, management report) rank below them —
-        # a notes page saying "consolidated" must not hijack the basis pool
-        headed = [x for x in scored if x[2]]
-        pool = headed or scored
-        # prefer consolidated pages within the tier, if any exist
+        s, basis, heading = _score_page(p.text, title_pats, cue_pats)
+        if s > 0:
+            scored.append((s, basis, heading, p.index))
+    return scored
+
+
+def _pick(scored, doc_profile, cue_pats, code, want_basis=None,
+          prefer_consolidated=False, exclude=()):
+    """Choose the best statement page (+ its continuations) from `scored`.
+
+    want_basis: if given, restrict to pages stamped that basis (used to find
+    the standalone counterpart). prefer_consolidated: soft preference within
+    the tier (the primary selection). exclude: page indices already taken by
+    the primary, so the alternate basis can't reuse them.
+    """
+    if not scored:
+        return None
+    # heading-titled pages are real statements; pages that merely discuss the
+    # statement (notes, management report) rank below them — a notes page
+    # saying "consolidated" must not hijack the basis pool
+    headed = [x for x in scored if x[2]]
+    pool = headed or scored
+    pool = [x for x in pool if x[3] not in exclude]
+    if want_basis is not None:
+        pool = [x for x in pool if x[1] == want_basis]
+    elif prefer_consolidated:
         consolidated = [x for x in pool if x[1] == "consolidated"]
         pool = consolidated or pool
-        # ties go to the EARLIER page: the statement itself precedes the
-        # notes/SOCIE pages that echo its keywords
-        pool.sort(key=lambda x: (-x[0], x[3]))
-        score, basis, _, best = pool[0]
-        # Statements may continue on a neighbouring page (which lacks the
-        # title there). Only adjacent pages qualify — a distant page that
-        # also scores is a DIFFERENT copy of the statement (standalone,
-        # prior period, summary) and mixing it corrupts the metric set.
-        pages = [best]
-        for nb in (best - 1, best + 1):
-            if 0 <= nb < doc_profile.n_pages and _is_continuation(
-                    doc_profile.pages[nb].text, cue_pats):
-                pages.append(nb)
-        results[code] = Location(code, basis, pages, score)
+    if not pool:
+        return None
+    # ties go to the EARLIER page: the statement itself precedes the
+    # notes/SOCIE pages that echo its keywords
+    pool.sort(key=lambda x: (-x[0], x[3]))
+    score, basis, _, best = pool[0]
+    # Statements may continue on a neighbouring page (which lacks the title
+    # there). Only adjacent pages qualify — a distant page that also scores is
+    # a DIFFERENT copy of the statement (standalone, prior period, summary) and
+    # mixing it corrupts the metric set.
+    pages = [best]
+    for nb in (best - 1, best + 1):
+        if 0 <= nb < doc_profile.n_pages and _is_continuation(
+                doc_profile.pages[nb].text, cue_pats):
+            pages.append(nb)
+    return Location(code, basis, pages, score)
+
+
+def locate(doc_profile):
+    """Return {statement_code: Location} for BS, PL, CF — the PRIMARY selection
+    (prefers consolidated, falls back per-statement). Unchanged behaviour."""
+    results = {}
+    for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
+        scored = _scored_pages(doc_profile, title_pats, cue_pats)
+        loc = _pick(scored, doc_profile, cue_pats, code, prefer_consolidated=True)
+        results[code] = loc or Location(code, "unknown", [], 0)
     return results
+
+
+def locate_alternate(doc_profile, primary):
+    """Find the OTHER basis's statement pages, distinct from `primary`.
+
+    If the primary selection landed on consolidated pages, this returns the
+    standalone counterpart (and vice-versa) so both can be extracted and shown
+    side by side. Returns {code: Location}; a code with no counterpart gets an
+    empty Location (basis "none").
+    """
+    results = {}
+    for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
+        prim = primary.get(code)
+        prim_basis = prim.basis if prim else "unknown"
+        want = ("standalone" if prim_basis == "consolidated"
+                else "consolidated" if prim_basis == "standalone"
+                else None)
+        if want is None:
+            results[code] = Location(code, "none", [], 0)
+            continue
+        scored = _scored_pages(doc_profile, title_pats, cue_pats)
+        exclude = set(prim.page_indices) if prim else set()
+        loc = _pick(scored, doc_profile, cue_pats, code,
+                    want_basis=want, exclude=exclude)
+        results[code] = loc or Location(code, want, [], 0)
+    return results
+
+
+def has_pages(locations):
+    """True if any statement in this basis actually resolved to pages."""
+    return any(loc.page_indices for loc in locations.values())
 
 
 def _is_continuation(text, cue_pats):
@@ -1149,6 +1219,11 @@ DERIVATIONS = [
     ("total_equity_and_liabilities", [("total_assets", 1)]),
     ("total_assets", [("total_equity_and_liabilities", 1)]),
     ("total_income", [("revenue", 1), ("other_income", 1)]),
+    # P&L identity: total income - total expenses = profit before tax. Function-
+    # of-expense statements (Newgen) and some IFRS layouts never print a "Total
+    # expenses" line; the identity pins it exactly from income and PBT.
+    ("total_expenses", [("total_income", 1), ("profit_before_tax", -1)]),
+    ("total_expenses", [("revenue", 1), ("other_income", 1), ("profit_before_tax", -1)]),
     # some P&Ls print tax only as Current/Deferred sub-lines with no total
     # (Airtel). Sign risk, documented: an EU-convention file (tax printed
     # negative) with tax MISSING would derive the positive magnitude — no
@@ -1229,12 +1304,8 @@ HEADERS = ["Statement", "Metric", "Value", "Status", "Page",
            "Matched label", "Sources", "Checks passed", "Checks failed"]
 
 
-def write_excel(report_dict, out_path, extractions=None, meta=None):
-    """report_dict: ValidationReport.to_dict(); extractions: {metric: Extraction}."""
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Metrics"
-
+def _fill_sheet(ws, report_dict, extractions, meta):
+    """Render one basis (report_dict + extractions) onto a worksheet."""
     if meta:
         ws.append([meta])
         ws["A1"].font = Font(bold=True, size=12)
@@ -1270,6 +1341,23 @@ def write_excel(report_dict, out_path, extractions=None, meta=None):
         ws.column_dimensions[ws.cell(row=header_row, column=i).column_letter].width = w
     ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
 
+
+def write_excel(sheets, out_path, extractions=None, meta=None):
+    """Write one worksheet per basis.
+
+    sheets: list of (sheet_name, report_dict, extractions). For backward
+    compatibility a single (report_dict, extractions=...) call is still
+    accepted — it becomes a one-sheet "Metrics" workbook.
+    """
+    if isinstance(sheets, dict):
+        sheets = [("Metrics", sheets, extractions)]
+
+    wb = Workbook()
+    wb.remove(wb.active)   # we add named sheets explicitly
+    for name, report_dict, ext in sheets:
+        ws = wb.create_sheet(title=name[:31])   # Excel caps sheet names at 31
+        _fill_sheet(ws, report_dict, ext, meta)
+
     wb.save(out_path)
     return out_path
 
@@ -1278,6 +1366,44 @@ def write_excel(report_dict, out_path, extractions=None, meta=None):
 # PIPELINE  (was finagent/pipeline.py)
 # Glue: pdf in -> validated metrics -> excel out.
 # =============================================================================
+def _extract_basis(pdf_path, locations, log, label):
+    """Run extract -> normalize -> validate -> derive for one set of statement
+    locations (one basis). Returns (report, {metric: Extraction})."""
+    v = Validator(expected_metrics=EXPECTED_METRICS)
+    all_extractions = {}
+    for code, loc in locations.items():
+        if not loc.page_indices:
+            continue
+        raw = extract(pdf_path, loc.page_indices,
+                      cue_pats=STATEMENT_SIGNATURES[code][1])
+        extractions = normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
+        log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
+        for metric, ext in extractions.items():
+            # A metric matched on a NON-native statement (via `also_on`, e.g.
+            # depreciation found in the CF add-backs) is a FALLBACK only: take
+            # it solely when the native statement didn't yield the metric.
+            # Statements iterate BS->PL->CF, so the native reading always lands
+            # first. This keeps the clean P&L value where it exists (BHEL,
+            # Wilmar) and only fills the gap where the P&L groups it away
+            # (Newgen, HDFC) — without a second, conflicting vote.
+            if METRICS[metric]["statement"] != code and metric in all_extractions:
+                continue
+            all_extractions[metric] = ext
+            v.add(metric, ext.value, source=ext.source, page=ext.page,
+                  label_text=ext.raw_label)
+
+    # 6. validate, then 6b. derive what the identities fix exactly.
+    # Order matters: derived values must never feed the identity proofs —
+    # they satisfy the deriving identity by construction.
+    report = derive(v.validate())
+    return report, all_extractions
+
+
+def _sheet_name(basis):
+    return {"consolidated": "Consolidated", "standalone": "Standalone"}.get(
+        basis, "Financials")
+
+
 def run(pdf_path, out_path=None, verbose=True):
     pdf_path = Path(pdf_path)
     t0 = time.time()
@@ -1290,42 +1416,40 @@ def run(pdf_path, out_path=None, verbose=True):
     doc = profile(pdf_path)
     log(f"[profile] {doc.summary()}")
 
-    # 3. locate statement pages
-    locations = locate(doc)
-    for code, loc in locations.items():
+    # 3. locate statement pages — PRIMARY (prefers consolidated) plus the
+    # standalone/consolidated counterpart, so both are extracted separately.
+    primary = locate(doc)
+    alternate = locate_alternate(doc, primary)
+    for code, loc in primary.items():
         pages_1based = [i + 1 for i in loc.page_indices]
         log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
+        alt = alternate.get(code)
+        if alt and alt.page_indices:
+            log(f"[locate]   alt {code}: pages {[i + 1 for i in alt.page_indices]} "
+                f"basis={alt.basis} score={alt.score:.1f}")
 
-    # 4. extract + 5. normalize, statement by statement so labels can only
-    # match metrics that belong on that statement
-    v = Validator(expected_metrics=EXPECTED_METRICS)
-    all_extractions = {}
-    for code, loc in locations.items():
-        if not loc.page_indices:
-            continue
-        raw = extract(pdf_path, loc.page_indices,
-                      cue_pats=STATEMENT_SIGNATURES[code][1])
-        extractions = normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
-        log(f"[extract] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
-        for metric, ext in extractions.items():
-            all_extractions[metric] = ext
-            v.add(metric, ext.value, source=ext.source, page=ext.page,
-                  label_text=ext.raw_label)
-
-    # 6. validate, then 6b. derive what the identities fix exactly.
-    # Order matters: derived values must never feed the identity proofs —
-    # they satisfy the deriving identity by construction.
-    report = v.validate()
-    report = derive(report)
+    # 4-6b. extract + validate + derive, once per basis. The primary report is
+    # the one returned (backward-compatible with the golden/benchmark harness);
+    # the alternate is the standalone counterpart, shown on its own sheet.
+    primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
+    report, primary_ext = _extract_basis(pdf_path, primary, log,
+                                         _sheet_name(primary_basis).lower())
     if verbose:
         report.print_summary()
 
-    # 7. write
+    sheets = [(_sheet_name(primary_basis), report.to_dict(), primary_ext)]
+    if has_pages(alternate):
+        alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, "standalone")
+        sheets.append((_sheet_name(alternate["BS"].basis if alternate.get("BS")
+                                   and alternate["BS"].page_indices else "standalone"),
+                       alt_report.to_dict(), alt_ext))
+
+    # 7. write — one sheet per basis
     if out_path is None:
         out_path = pdf_path.with_suffix("").name + "_metrics.xlsx"
         out_path = Path("output") / out_path
         out_path.parent.mkdir(exist_ok=True)
-    write_excel(report.to_dict(), out_path, extractions=all_extractions,
+    write_excel(sheets, out_path,
                 meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}")
     log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
     return report
