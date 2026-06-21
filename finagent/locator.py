@@ -130,43 +130,99 @@ def _score_page(text, title_pats, cue_pats):
     return title + cues + min(numbers, 30) * 0.1, basis, bool(title_line)
 
 
-def locate(doc_profile):
-    """Return {statement_code: Location} for BS, PL, CF."""
-    results = {}
-    for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
-        scored = []  # (score, basis, heading, index)
-        for p in doc_profile.pages:
-            if p.text_quality == "EMPTY":
-                continue
-            s, basis, heading = _score_page(p.text, title_pats, cue_pats)
-            if s > 0:
-                scored.append((s, basis, heading, p.index))
-        if not scored:
-            results[code] = Location(code, "unknown", [], 0)
+def _scored_pages(doc_profile, title_pats, cue_pats):
+    """All pages that score as this statement: (score, basis, heading, index)."""
+    scored = []
+    for p in doc_profile.pages:
+        if p.text_quality == "EMPTY":
             continue
-        # heading-titled pages are real statements; pages that merely
-        # discuss the statement (notes, management report) rank below them —
-        # a notes page saying "consolidated" must not hijack the basis pool
-        headed = [x for x in scored if x[2]]
-        pool = headed or scored
-        # prefer consolidated pages within the tier, if any exist
+        s, basis, heading = _score_page(p.text, title_pats, cue_pats)
+        if s > 0:
+            scored.append((s, basis, heading, p.index))
+    return scored
+
+
+def _pick(scored, doc_profile, cue_pats, code, want_basis=None,
+          prefer_consolidated=False, exclude=()):
+    """Choose the best statement page (+ its continuations) from `scored`.
+
+    want_basis: if given, restrict to pages stamped that basis (used to find
+    the standalone counterpart). prefer_consolidated: soft preference within
+    the tier (the primary selection). exclude: page indices already taken by
+    the primary, so the alternate basis can't reuse them.
+    """
+    if not scored:
+        return None
+    # heading-titled pages are real statements; pages that merely discuss the
+    # statement (notes, management report) rank below them — a notes page
+    # saying "consolidated" must not hijack the basis pool
+    headed = [x for x in scored if x[2]]
+    pool = headed or scored
+    pool = [x for x in pool if x[3] not in exclude]
+    if want_basis is not None:
+        pool = [x for x in pool if x[1] == want_basis]
+    elif prefer_consolidated:
         consolidated = [x for x in pool if x[1] == "consolidated"]
         pool = consolidated or pool
-        # ties go to the EARLIER page: the statement itself precedes the
-        # notes/SOCIE pages that echo its keywords
-        pool.sort(key=lambda x: (-x[0], x[3]))
-        score, basis, _, best = pool[0]
-        # Statements may continue on a neighbouring page (which lacks the
-        # title there). Only adjacent pages qualify — a distant page that
-        # also scores is a DIFFERENT copy of the statement (standalone,
-        # prior period, summary) and mixing it corrupts the metric set.
-        pages = [best]
-        for nb in (best - 1, best + 1):
-            if 0 <= nb < doc_profile.n_pages and _is_continuation(
-                    doc_profile.pages[nb].text, cue_pats):
-                pages.append(nb)
-        results[code] = Location(code, basis, pages, score)
+    if not pool:
+        return None
+    # ties go to the EARLIER page: the statement itself precedes the
+    # notes/SOCIE pages that echo its keywords
+    pool.sort(key=lambda x: (-x[0], x[3]))
+    score, basis, _, best = pool[0]
+    # Statements may continue on a neighbouring page (which lacks the title
+    # there). Only adjacent pages qualify — a distant page that also scores is
+    # a DIFFERENT copy of the statement (standalone, prior period, summary) and
+    # mixing it corrupts the metric set.
+    pages = [best]
+    for nb in (best - 1, best + 1):
+        if 0 <= nb < doc_profile.n_pages and _is_continuation(
+                doc_profile.pages[nb].text, cue_pats):
+            pages.append(nb)
+    return Location(code, basis, pages, score)
+
+
+def locate(doc_profile):
+    """Return {statement_code: Location} for BS, PL, CF — the PRIMARY selection
+    (prefers consolidated, falls back per-statement). Unchanged behaviour."""
+    results = {}
+    for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
+        scored = _scored_pages(doc_profile, title_pats, cue_pats)
+        loc = _pick(scored, doc_profile, cue_pats, code, prefer_consolidated=True)
+        results[code] = loc or Location(code, "unknown", [], 0)
     return results
+
+
+def locate_alternate(doc_profile, primary):
+    """Find the OTHER basis's statement pages, distinct from `primary`.
+
+    If the primary selection landed on consolidated pages, this returns the
+    standalone counterpart (and vice-versa) so both can be extracted and shown
+    side by side. Returns {code: Location}; a code with no counterpart gets an
+    empty Location (basis "none"), which the pipeline reads as "this basis was
+    not present in the PDF" rather than "extracted nothing".
+    """
+    results = {}
+    for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
+        prim = primary.get(code)
+        prim_basis = prim.basis if prim else "unknown"
+        want = ("standalone" if prim_basis == "consolidated"
+                else "consolidated" if prim_basis == "standalone"
+                else None)   # primary basis unknown -> no distinct counterpart
+        if want is None:
+            results[code] = Location(code, "none", [], 0)
+            continue
+        scored = _scored_pages(doc_profile, title_pats, cue_pats)
+        exclude = set(prim.page_indices) if prim else set()
+        loc = _pick(scored, doc_profile, cue_pats, code,
+                    want_basis=want, exclude=exclude)
+        results[code] = loc or Location(code, want, [], 0)
+    return results
+
+
+def has_pages(locations):
+    """True if any statement in this basis actually resolved to pages."""
+    return any(loc.page_indices for loc in locations.values())
 
 
 def _is_continuation(text, cue_pats):

@@ -31,6 +31,11 @@ DERIVATIONS = [
     ("total_equity_and_liabilities", [("total_assets", 1)]),
     ("total_assets", [("total_equity_and_liabilities", 1)]),
     ("total_income", [("revenue", 1), ("other_income", 1)]),
+    # P&L identity: total income - total expenses = profit before tax. Function-
+    # of-expense statements (Newgen) and some IFRS layouts never print a "Total
+    # expenses" line; the identity pins it exactly from income and PBT.
+    ("total_expenses", [("total_income", 1), ("profit_before_tax", -1)]),
+    ("total_expenses", [("revenue", 1), ("other_income", 1), ("profit_before_tax", -1)]),
     # some P&Ls print tax only as Current/Deferred sub-lines with no total
     # (Airtel). Sign risk, documented: an EU-convention file (tax printed
     # negative) with tax MISSING would derive the positive magnitude — no

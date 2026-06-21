@@ -31,12 +31,8 @@ HEADERS = ["Statement", "Metric", "Value", "Status", "Page",
            "Matched label", "Sources", "Checks passed", "Checks failed"]
 
 
-def write_excel(report_dict, out_path, extractions=None, meta=None):
-    """report_dict: ValidationReport.to_dict(); extractions: {metric: Extraction}."""
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Metrics"
-
+def _fill_sheet(ws, report_dict, extractions, meta):
+    """Render one basis (report_dict + extractions) onto a worksheet."""
     if meta:
         ws.append([meta])
         ws["A1"].font = Font(bold=True, size=12)
@@ -71,6 +67,24 @@ def write_excel(report_dict, out_path, extractions=None, meta=None):
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[ws.cell(row=header_row, column=i).column_letter].width = w
     ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
+
+
+def write_excel(sheets, out_path, extractions=None, meta=None):
+    """Write one worksheet per basis.
+
+    sheets: list of (sheet_name, report_dict, extractions). For backward
+    compatibility a single (report_dict, extractions=...) call is still
+    accepted — it becomes a one-sheet "Metrics" workbook.
+    """
+    # back-compat: write_excel(report_dict, path, extractions=..., meta=...)
+    if isinstance(sheets, dict):
+        sheets = [("Metrics", sheets, extractions)]
+
+    wb = Workbook()
+    wb.remove(wb.active)   # we add named sheets explicitly
+    for name, report_dict, ext in sheets:
+        ws = wb.create_sheet(title=name[:31])   # Excel caps sheet names at 31
+        _fill_sheet(ws, report_dict, ext, meta)
 
     wb.save(out_path)
     return out_path
