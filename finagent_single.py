@@ -27,6 +27,13 @@ from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font, PatternFill
 
+# Alias modular namespaces to the current module to support the bundled single-file build
+profiler = sys.modules[__name__]
+locator = sys.modules[__name__]
+normalizer = sys.modules[__name__]
+unit_detector = sys.modules[__name__]
+geometric = sys.modules[__name__]
+
 
 # =============================================================================
 
@@ -1611,13 +1618,6 @@ def run(pdf_path, out_path=None, verbose=True):
                 meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}")
     log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
     return report
-
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(1)
-    run(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)
 
 
 

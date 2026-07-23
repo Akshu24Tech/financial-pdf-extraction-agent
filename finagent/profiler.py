@@ -62,3 +62,16 @@ def profile(pdf_path):
             text=text, text_quality=_quality(text),
         ))
     return doc
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: python -m finagent.profiler <pdf_path>")
+        sys.exit(1)
+    d = profile(sys.argv[1])
+    print(f"File: {d.path}")
+    print(f"Total Pages: {d.n_pages}")
+    print(f"Landscape Ratio: {d.landscape_ratio:.2f}")
+    print(f"Summary: {d.summary()}")
+
