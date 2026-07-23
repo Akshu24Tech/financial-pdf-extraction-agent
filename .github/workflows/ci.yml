@@ -40,8 +40,13 @@ jobs:
       - name: Lint with ruff
         run: ruff check .
 
+      - name: Verify single-file bundle sync
+        run: python -m finagent.bundler --check
+
+
       - name: Run tests
         run: pytest -v
+
 
   # A GATE job: one job that succeeds only if EVERY matrix job above passed.
   # We require THIS single check in branch protection, so the protection rule

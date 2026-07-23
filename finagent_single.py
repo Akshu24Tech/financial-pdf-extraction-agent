@@ -6,18 +6,9 @@ run it without installing a package.
 
     python finagent_single.py test_pdfs/TCS_2024-2025.pdf
 
-Core idea: accuracy comes from VERIFICATION, not extraction. Financial
-statements are self-verifying (A = L + E, subtotals, cross-statement ties),
-so every value gets proven, not trusted.
-
-Pipeline (each section below is one stage):
-
-    PDF -> profile -> locate -> extract -> normalize -> validate -> derive -> write
-
-Dependencies: pypdf, pdfplumber, rapidfuzz, openpyxl  (see requirements.txt)
-
-The multi-file package in finagent/ is the source of truth. This file is a
-faithful bundle of it — if you edit the package, regenerate or mirror here.
+The multi-file package in finagent/ is the source of truth.
+AUTO-GENERATED FILE. Do not edit directly; modify finagent/ and run:
+    python -m finagent.bundler
 """
 import re
 import sys
@@ -27,6 +18,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from statistics import median
+from typing import Optional, List, Dict, Tuple
 
 from pypdf import PdfReader
 import pdfplumber
@@ -37,11 +29,12 @@ from openpyxl.styles import Font, PatternFill
 
 
 # =============================================================================
-# SCHEMA  (was finagent/schema.py)
-# The single vocabulary every stage speaks: canonical metric -> statement +
-# label synonyms as they appear across companies. Synonyms are matched fuzzily.
-# Statement codes: PL = profit & loss, BS = balance sheet, CF = cash flow.
+
+# SCHEMA (from finagent/schema.py)
+
 # =============================================================================
+
+# statement codes: PL = profit & loss, BS = balance sheet, CF = cash flow
 METRICS = {
     # ---------------- Profit & Loss ----------------
     "revenue": {
@@ -248,7 +241,6 @@ METRICS = {
 ALL_METRICS = list(METRICS)
 EXPECTED_METRICS = [m for m, d in METRICS.items() if not d.get("optional")]
 
-
 def metrics_for_statement(code):
     """Metrics that may be matched on a statement: those that primarily live
     there, plus any whose `also_on` lists it (a metric that legitimately
@@ -258,10 +250,86 @@ def metrics_for_statement(code):
 
 
 # =============================================================================
-# STAGE 1 — PROFILE  (was finagent/profiler.py)
-# What kind of PDF is this, page by page? Uses pypdf (fast) for the full-doc
-# pass; pdfplumber is reserved for the few pages we actually extract from.
+
+# UNIT DETECTOR (from finagent/unit_detector.py)
+
 # =============================================================================
+
+from dataclasses import dataclass
+
+
+@dataclass
+class UnitInfo:
+    unit_name: str         # e.g., "Crores", "Lakhs", "Millions", "Thousands", "Units"
+    currency: str          # e.g., "INR", "USD", "EUR", "UNKNOWN"
+    multiplier: float      # e.g., Crores -> 10_000_000, Lakhs -> 100_000, Millions -> 1_000_000
+    raw_text: str
+
+
+@dataclass
+class PeriodHeader:
+    current_period: str    # e.g. "31-Mar-2025" or "FY25"
+    prior_period: Optional[str] = None  # e.g. "31-Mar-2024" or "FY24"
+    columns_detected: List[str] = None
+
+
+UNIT_PATTERNS: List[Tuple[str, str, str, float]] = [
+    # (regex_pattern, unit_name, currency, multiplier)
+    (r"(?:₹|rs\.?|rupees?)\s+(?:in\s+)?crores?", "Crores", "INR", 10_000_000.0),
+    (r"(?:₹|rs\.?|rupees?)\s+(?:in\s+)?lakhs?", "Lakhs", "INR", 100_000.0),
+    (r"(?:₹|rs\.?|rupees?)\s+(?:in\s+)?millions?", "Millions", "INR", 1_000_000.0),
+    (r"(?:₹|rs\.?|rupees?)\s+(?:in\s+)?thousands?", "Thousands", "INR", 1_000.0),
+    (r"usd\s+(?:in\s+)?millions?|\$\s+(?:in\s+)?millions?", "Millions", "USD", 1_000_000.0),
+    (r"usd\s+(?:in\s+)?thousands?|\$\s+(?:in\s+)?thousands?", "Thousands", "USD", 1_000.0),
+    (r"eur|€\s+(?:in\s+)?millions?", "Millions", "EUR", 1_000_000.0),
+    (r"in\s+crores?", "Crores", "INR", 10_000_000.0),
+    (r"in\s+lakhs?", "Lakhs", "INR", 100_000.0),
+    (r"in\s+millions?", "Millions", "UNKNOWN", 1_000_000.0),
+    (r"in\s+thousands?", "Thousands", "UNKNOWN", 1_000.0),
+]
+
+PERIOD_DATE_PATTERN = re.compile(
+    r"(?:as\s+at|as\s+of|for\s+the\s+year\s+ended)?\s*"
+    r"(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}"
+    r"|\d{4}-\d{2}-\d{2}|fy\s*\d{2,4})",
+    re.IGNORECASE
+)
+
+
+def detect_unit(text: str) -> UnitInfo:
+    """Scan page or table header text for unit scale declarations."""
+    t = text.lower()
+    for pattern, name, curr, mult in UNIT_PATTERNS:
+        match = re.search(pattern, t)
+        if match:
+            return UnitInfo(unit_name=name, currency=curr, multiplier=mult, raw_text=match.group(0))
+
+    return UnitInfo(unit_name="Units", currency="UNKNOWN", multiplier=1.0, raw_text="default")
+
+
+def detect_periods(text: str) -> PeriodHeader:
+    """Extract comparative period headers (e.g. 31 March 2025 vs 31 March 2024)."""
+    matches = PERIOD_DATE_PATTERN.findall(text)
+    if not matches:
+        return PeriodHeader(current_period="Current", prior_period="Prior", columns_detected=[])
+    
+    unique_dates = []
+    for m in matches:
+        m_str = m.strip()
+        if m_str not in unique_dates:
+            unique_dates.append(m_str)
+
+    current = unique_dates[0] if len(unique_dates) > 0 else "Current"
+    prior = unique_dates[1] if len(unique_dates) > 1 else None
+    return PeriodHeader(current_period=current, prior_period=prior, columns_detected=unique_dates)
+
+
+# =============================================================================
+
+# PROFILER (from finagent/profiler.py)
+
+# =============================================================================
+
 @dataclass
 class PageProfile:
     index: int                # 0-based
@@ -318,13 +386,11 @@ def profile(pdf_path):
 
 
 # =============================================================================
-# STAGE 2 — GEOMETRY  (was finagent/geometry.py)
-# Turn messy physical pages into clean logical pages. Annual reports often
-# print two logical pages side by side on one landscape sheet (A3 two-up:
-# Airtel, Reliance). We find the gutter and split the words into two pages.
-# A true single-page landscape table (BMW) must NOT be split — the gutter
-# test is conservative.
+
+# GEOMETRY (from finagent/geometry.py)
+
 # =============================================================================
+
 GUTTER_BINS = 200          # x-axis resolution for the coverage histogram
 SEARCH_LO, SEARCH_HI = 0.35, 0.65   # look for the gutter in the middle third
 MAX_GUTTER_COVERAGE = 0.01  # words allowed to touch the gutter band
@@ -377,11 +443,13 @@ def logical_pages(page, words):
 
 
 # =============================================================================
-# STAGE 3 — LOCATE  (was finagent/locator.py)
-# Find and classify the statement pages. Keyword scoring over the profiler's
-# per-page text. For each statement type we want the CONSOLIDATED version;
-# fall back to standalone if the document has none.
+
+# LOCATOR (from finagent/locator.py)
+
 # =============================================================================
+
+from dataclasses import dataclass
+
 # What counts as a "money figure" when deciding a page carries a real
 # statement (not a ToC mention). Two shapes: a long comma-grouped integer
 # ("1,58,788") OR a decimal figure with two places ("8207.65"). The decimal
@@ -429,7 +497,7 @@ class Location:
     score: float
 
 
-def _loc_search(pat, text):
+def _search(pat, text):
     """re.search with a kerning-tolerant fallback: PDF text layers sometimes
     split a word internally ("BAL ANCE SHEET"), so retry with the pattern's
     literal spaces removed against space-collapsed text."""
@@ -454,7 +522,7 @@ def _is_heading(line, title_pats):
 
 def _score_page(text, title_pats, cue_pats):
     t = text.lower()
-    title = sum(3 for p in title_pats if _loc_search(p, t))
+    title = sum(3 for p in title_pats if _search(p, t))
     cues = sum(1 for p in cue_pats if re.search(p, t))
     if title == 0 or cues < 2:
         return 0, "unknown", False
@@ -574,7 +642,8 @@ def locate_alternate(doc_profile, primary):
     If the primary selection landed on consolidated pages, this returns the
     standalone counterpart (and vice-versa) so both can be extracted and shown
     side by side. Returns {code: Location}; a code with no counterpart gets an
-    empty Location (basis "none").
+    empty Location (basis "none"), which the pipeline reads as "this basis was
+    not present in the PDF" rather than "extracted nothing".
     """
     results = {}
     for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
@@ -582,7 +651,7 @@ def locate_alternate(doc_profile, primary):
         prim_basis = prim.basis if prim else "unknown"
         want = ("standalone" if prim_basis == "consolidated"
                 else "consolidated" if prim_basis == "standalone"
-                else None)
+                else None)   # primary basis unknown -> no distinct counterpart
         if want is None:
             results[code] = Location(code, "none", [], 0)
             continue
@@ -607,12 +676,15 @@ def _is_continuation(text, cue_pats):
 
 
 # =============================================================================
-# STAGE 4 — EXTRACT  (was finagent/extractors/geometric.py)
-# Geometric, line-based extraction with pdfplumber. Financial statements are
-# usually borderless, so instead of table detection we reconstruct text lines
-# from word coordinates and parse each as "label ... numbers". Output is raw:
-# RawItem(label, value_strings, page); parsing the numbers is the normalizer.
+
+# GEOMETRIC EXTRACTOR (from finagent/extractors\geometric.py)
+
 # =============================================================================
+
+from dataclasses import dataclass
+
+
+
 # tokens that look like report numbers: 1,49,982.45  (1,234)  123.45  -
 NUM_CHARS = set("0123456789,().%-−–—")
 
@@ -627,6 +699,19 @@ MAX_SIGN_GAP = 4.0
 
 # standalone dashes are nil values: part of a row's numeric tail
 PLACEHOLDER_TOKENS = {"-", "−", "–", "—"}
+
+# A 4-digit period header ("2025", "(2024)") used to confirm we found the
+# column-header row and to count the value columns.
+YEAR_RE = re.compile(r"\(?(?:19|20)\d{2}\)?$")
+# the reference-column header word ("Note", "Schedule", "Page" ...) — the
+# value columns sit to its right, so its right edge is the column boundary.
+REF_HEADER_RE = re.compile(r"^(?:notes?|schedule|sch|page|ref)\.?$", re.IGNORECASE)
+# small gap to the right of the reference header before the value columns
+REF_FLOOR_MARGIN = 12.0
+# more year columns than this means a segmented sheet (BMW: a 2025/2024 pair
+# per business segment) or a multi-year overview. The value column is then no
+# longer simply "the leftmost", so positional cutting is unsafe — bail out.
+MAX_VALUE_COLS = 3
 
 
 @dataclass
@@ -646,20 +731,65 @@ def _is_numeric_token(tok):
 
 
 def _merge_detached_minus(line):
-    """x0-sorted words -> token strings, gluing a detached minus onto the
-    number it signs. Distance decides sign vs nil placeholder."""
+    """x0-sorted words -> [(token, x0)], gluing a detached minus onto the
+    number it signs. Distance decides sign vs nil placeholder. The x0 (left
+    edge) rides along so a token can later be assigned to its column."""
     out, i = [], 0
     while i < len(line):
         w = line[i]
         if (w["text"] in MINUS_TOKENS and i + 1 < len(line)
                 and _is_numeric_token(line[i + 1]["text"])
                 and line[i + 1]["x0"] - w["x1"] <= MAX_SIGN_GAP):
-            out.append("-" + line[i + 1]["text"])
+            out.append(("-" + line[i + 1]["text"], w["x0"]))
             i += 2
         else:
-            out.append(w["text"])
+            out.append((w["text"], w["x0"]))
             i += 1
     return out
+
+
+def _detect_value_floor(lines):
+    """Locate the left boundary of the value columns.
+
+    Returns an x-coordinate: any number whose left edge sits below it is a
+    reference-column entry (note / schedule / page number), not a value.
+    Returns None when no confident header is found — callers then fall back to
+    the magnitude heuristics.
+
+    Two anchors. First the period-header row (the line with the most 4-digit
+    year tokens) tells us where the value columns START (leftmost year) and how
+    MANY there are — too many means a segmented/multi-year sheet (BMW prints a
+    2025/2024 pair per business segment) where the value column isn't simply
+    "leftmost", so we bail. Then the boundary itself is taken from the
+    reference-column header word ("Note"/"Schedule"/"Page") sitting left of the
+    values: its right edge is exactly where the value columns begin. Anchoring
+    on the ref header beats anchoring on the year token, which can drift far
+    right inside a wide "As at March 31, 2025" header while the numbers below
+    align further left (BHEL).
+    """
+    xs = [w["x0"] for ln in lines for w in ln]
+    if not xs or max(xs) - min(xs) < 50:   # no real column spread
+        return None
+    best = None                    # (year_count, leftmost_year_x0)
+    for ln in lines:
+        yrs = [w["x0"] for w in ln if YEAR_RE.fullmatch(w["text"])]
+        if not yrs:
+            continue
+        cand = (len(yrs), min(yrs))   # most years wins; tie -> rightmost
+        if best is None or cand > best:
+            best = cand
+    if best is None or best[0] > MAX_VALUE_COLS:
+        return None
+    anchor = best[1]               # leftmost value-year column
+    # rightmost reference-column header that sits left of the value columns
+    ref_x1 = None
+    for ln in lines:
+        for w in ln:
+            if REF_HEADER_RE.match(w["text"]) and w["x1"] < anchor:
+                ref_x1 = w["x1"] if ref_x1 is None else max(ref_x1, w["x1"])
+    if ref_x1 is None:             # no reference column to strip
+        return None
+    return ref_x1 + REF_FLOOR_MARGIN
 
 
 def _lines_from_words(words, y_tol=2.5):
@@ -697,25 +827,42 @@ def _items_from_words(words, page_index):
             items.append(pending)
             pending = None
 
-    for line in _lines_from_words(words):
+    lines = _lines_from_words(words)
+    # locate the value columns once for the whole block; None falls back to
+    # the normalizer's magnitude heuristics (header not confidently found)
+    value_floor = _detect_value_floor(lines)
+    for line in lines:
         line.sort(key=lambda w: w["x0"])
-        toks = _merge_detached_minus(line)
+        toks = _merge_detached_minus(line)          # [(text, x0), ...]
+        texts = [t for t, _ in toks]
         # split into label prefix and trailing numeric tokens; nil
         # placeholders are tail members, not label text
         split = len(toks)
         for i in range(len(toks) - 1, -1, -1):
-            if _is_numeric_token(toks[i]) or toks[i] in PLACEHOLDER_TOKENS:
+            if _is_numeric_token(texts[i]) or texts[i] in PLACEHOLDER_TOKENS:
                 split = i
             else:
                 break
-        label = " ".join(toks[:split]).strip()
-        nums = toks[split:]
+        label = " ".join(texts[:split]).strip()
+        num_pairs = toks[split:]
         # a parenthetical can split across the boundary: "... (refer note"
         # | "15)" — the closing fragment looks numeric and would become the
         # value (closing_cash = 15!). Re-join it into the label.
-        while (label.count("(") > label.count(")") and nums
-               and re.fullmatch(r"[^()]*\)", nums[0])):
-            label = f"{label} {nums.pop(0)}"
+        while (label.count("(") > label.count(")") and num_pairs
+               and re.fullmatch(r"[^()]*\)", num_pairs[0][0])):
+            label = f"{label} {num_pairs.pop(0)[0]}"
+        # COLUMN GEOMETRY: a numeric token sitting LEFT of the leftmost value
+        # column is a reference-column entry (note / schedule / page number),
+        # not a value — drop it by POSITION, regardless of magnitude. This is
+        # what lets a bare small integer ("5") under a year header be read as
+        # a value. Guarded: if the filter would wipe out every number (header
+        # mis-detected for this row), keep the row and let the magnitude
+        # heuristics in the normalizer handle it.
+        if value_floor is not None:
+            kept = [p for p in num_pairs if p[1] >= value_floor]
+            if kept:
+                num_pairs = kept
+        nums = [t for t, _ in num_pairs]
         if label and nums:
             if prev_text and label[:1].islower():
                 label = f"{prev_text} {label}"
@@ -804,7 +951,7 @@ def extract(pdf_path, page_indices, cue_pats=None):
             upright = [w for w in words if w.get("upright", True)]
             if len(upright) >= len(words) / 2:
                 words = upright
-            logical = logical_pages(page, words)
+            logical = geometry.logical_pages(page, words)
             if len(logical) > 1 and cue_pats:
                 matching = [g for g in logical if _matches_statement(g, cue_pats)]
                 logical = matching or logical
@@ -814,10 +961,15 @@ def extract(pdf_path, page_indices, cue_pats=None):
 
 
 # =============================================================================
-# STAGE 5 — NORMALIZE  (was finagent/normalizer.py)
-# Turn raw line items into canonical metrics: parse number strings, drop
-# note-reference columns, fuzzy-match label text to the schema.
+
+# NORMALIZER (from finagent/normalizer.py)
+
 # =============================================================================
+
+from dataclasses import dataclass
+
+
+
 MATCH_THRESHOLD = 88
 
 
@@ -1014,11 +1166,11 @@ def normalize(raw_items, allowed_metrics=None):
 
 
 # =============================================================================
-# STAGE 6 — VALIDATE  (was finagent/validator.py)
-# Prove which extracted values are correct. Statements are self-verifying:
-# accounting identities and cross-statement ties confirm a value with no
-# ground truth. Verdicts: VERIFIED / PROBABLE / FLAGGED / MISSING (+ DERIVED).
+
+# VALIDATOR (from finagent/validator.py)
+
 # =============================================================================
+
 class Status(str, Enum):
     VERIFIED = "VERIFIED"
     PROBABLE = "PROBABLE"
@@ -1200,11 +1352,11 @@ class ValidationReport:
 
 
 # =============================================================================
-# STAGE 6b — DERIVE  (was finagent/deriver.py)
-# Derive missing metrics that are arithmetic consequences of extracted ones.
-# Runs AFTER validation (no feedback into the proofs); reported as DERIVED,
-# never VERIFIED, because a derived value satisfies its identity by construction.
+
+# DERIVER (from finagent/deriver.py)
+
 # =============================================================================
+
 # target <- [(input_metric, sign), ...]
 DERIVATIONS = [
     ("total_liabilities", [("total_equity_and_liabilities", 1), ("total_equity", -1)]),
@@ -1278,10 +1430,16 @@ def derive(report):
 
 
 # =============================================================================
-# STAGE 7 — WRITE  (was finagent/writer.py)
-# Excel output with receipts: one row per metric with value, validation
-# status, page citation, the exact matched label, sources, and checks.
+
+# WRITER (from finagent/writer.py)
+
 # =============================================================================
+
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+from openpyxl.styles import Font, PatternFill
+
+
+
 def _clean(value):
     """Strip control/illegal chars openpyxl refuses to write to a cell.
     PDF text layers occasionally carry stray control bytes inside labels
@@ -1290,7 +1448,6 @@ def _clean(value):
     if isinstance(value, str):
         return ILLEGAL_CHARACTERS_RE.sub("", value)
     return value
-
 
 STATUS_FILL = {
     "VERIFIED": PatternFill("solid", fgColor="C6EFCE"),   # green
@@ -1349,6 +1506,7 @@ def write_excel(sheets, out_path, extractions=None, meta=None):
     compatibility a single (report_dict, extractions=...) call is still
     accepted — it becomes a one-sheet "Metrics" workbook.
     """
+    # back-compat: write_excel(report_dict, path, extractions=..., meta=...)
     if isinstance(sheets, dict):
         sheets = [("Metrics", sheets, extractions)]
 
@@ -1363,38 +1521,31 @@ def write_excel(sheets, out_path, extractions=None, meta=None):
 
 
 # =============================================================================
-# PIPELINE  (was finagent/pipeline.py)
-# Glue: pdf in -> validated metrics -> excel out.
+
+# PIPELINE (from finagent/pipeline.py)
+
 # =============================================================================
+
 def _extract_basis(pdf_path, locations, log, label):
     """Run extract -> normalize -> validate -> derive for one set of statement
     locations (one basis). Returns (report, {metric: Extraction})."""
+
     v = Validator(expected_metrics=EXPECTED_METRICS)
     all_extractions = {}
     for code, loc in locations.items():
         if not loc.page_indices:
             continue
-        raw = extract(pdf_path, loc.page_indices,
-                      cue_pats=STATEMENT_SIGNATURES[code][1])
-        extractions = normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
+        raw = geometric.extract(pdf_path, loc.page_indices,
+                                cue_pats=locator.STATEMENT_SIGNATURES[code][1])
+        extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
         log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
         for metric, ext in extractions.items():
-            # A metric matched on a NON-native statement (via `also_on`, e.g.
-            # depreciation found in the CF add-backs) is a FALLBACK only: take
-            # it solely when the native statement didn't yield the metric.
-            # Statements iterate BS->PL->CF, so the native reading always lands
-            # first. This keeps the clean P&L value where it exists (BHEL,
-            # Wilmar) and only fills the gap where the P&L groups it away
-            # (Newgen, HDFC) — without a second, conflicting vote.
             if METRICS[metric]["statement"] != code and metric in all_extractions:
                 continue
             all_extractions[metric] = ext
             v.add(metric, ext.value, source=ext.source, page=ext.page,
                   label_text=ext.raw_label)
 
-    # 6. validate, then 6b. derive what the identities fix exactly.
-    # Order matters: derived values must never feed the identity proofs —
-    # they satisfy the deriving identity by construction.
     report = derive(v.validate())
     return report, all_extractions
 
@@ -1413,13 +1564,20 @@ def run(pdf_path, out_path=None, verbose=True):
             print(msg)
 
     # 1. profile
-    doc = profile(pdf_path)
+    doc = profiler.profile(pdf_path)
     log(f"[profile] {doc.summary()}")
+
+    # 1b. unit & period anchor engine
+    sample_text = " ".join(p.text for p in doc.pages[:15])
+    unit_info = unit_detector.detect_unit(sample_text)
+    period_info = unit_detector.detect_periods(sample_text)
+    log(f"[unit_anchor] Scale: {unit_info.unit_name} ({unit_info.currency}) | mult={unit_info.multiplier}")
+    log(f"[period_anchor] Periods: current='{period_info.current_period}', prior='{period_info.prior_period}'")
 
     # 3. locate statement pages — PRIMARY (prefers consolidated) plus the
     # standalone/consolidated counterpart, so both are extracted separately.
-    primary = locate(doc)
-    alternate = locate_alternate(doc, primary)
+    primary = locator.locate(doc)
+    alternate = locator.locate_alternate(doc, primary)
     for code, loc in primary.items():
         pages_1based = [i + 1 for i in loc.page_indices]
         log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
@@ -1438,7 +1596,7 @@ def run(pdf_path, out_path=None, verbose=True):
         report.print_summary()
 
     sheets = [(_sheet_name(primary_basis), report.to_dict(), primary_ext)]
-    if has_pages(alternate):
+    if locator.has_pages(alternate):
         alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, "standalone")
         sheets.append((_sheet_name(alternate["BS"].basis if alternate.get("BS")
                                    and alternate["BS"].page_indices else "standalone"),
@@ -1458,5 +1616,13 @@ def run(pdf_path, out_path=None, verbose=True):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
+        sys.exit(1)
+    run(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)
+
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python finagent_single.py <pdf_path> [out_excel_path]")
         sys.exit(1)
     run(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)

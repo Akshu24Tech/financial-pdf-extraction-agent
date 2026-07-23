@@ -162,3 +162,28 @@ def test_metrics_for_statement_filters_correctly():
     assert "total_assets" in bs
     assert "revenue" not in bs            # revenue lives on the P&L
     assert all(METRICS[m]["statement"] == "BS" for m in bs)
+
+
+# ---------------------------------------------------------------------------
+# unit_detector: Unit & Period Anchor Engine
+# ---------------------------------------------------------------------------
+def test_unit_detector_crores():
+    from finagent.unit_detector import detect_unit
+    u = detect_unit("Balance Sheet as of March 31, 2025 (Rs. in Crores)")
+    assert u.unit_name == "Crores"
+    assert u.multiplier == 10_000_000.0
+
+
+def test_unit_detector_millions():
+    from finagent.unit_detector import detect_unit
+    u = detect_unit("Statement of Profit and Loss (in Millions)")
+    assert u.unit_name == "Millions"
+    assert u.multiplier == 1_000_000.0
+
+
+def test_unit_detector_periods():
+    from finagent.unit_detector import detect_periods
+    p = detect_periods("Financial Statements for 31 March 2025 and 31 March 2024")
+    assert "31 March 2025" in p.current_period
+    assert "31 March 2024" in p.prior_period
+
