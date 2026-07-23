@@ -34,6 +34,19 @@ MAX_SIGN_GAP = 4.0
 # standalone dashes are nil values: part of a row's numeric tail
 PLACEHOLDER_TOKENS = {"-", "−", "–", "—"}
 
+# A 4-digit period header ("2025", "(2024)") used to confirm we found the
+# column-header row and to count the value columns.
+YEAR_RE = re.compile(r"\(?(?:19|20)\d{2}\)?$")
+# the reference-column header word ("Note", "Schedule", "Page" ...) — the
+# value columns sit to its right, so its right edge is the column boundary.
+REF_HEADER_RE = re.compile(r"^(?:notes?|schedule|sch|page|ref)\.?$", re.IGNORECASE)
+# small gap to the right of the reference header before the value columns
+REF_FLOOR_MARGIN = 12.0
+# more year columns than this means a segmented sheet (BMW: a 2025/2024 pair
+# per business segment) or a multi-year overview. The value column is then no
+# longer simply "the leftmost", so positional cutting is unsafe — bail out.
+MAX_VALUE_COLS = 3
+
 
 @dataclass
 class RawItem:
@@ -52,20 +65,65 @@ def _is_numeric_token(tok):
 
 
 def _merge_detached_minus(line):
-    """x0-sorted words -> token strings, gluing a detached minus onto the
-    number it signs. Distance decides sign vs nil placeholder."""
+    """x0-sorted words -> [(token, x0)], gluing a detached minus onto the
+    number it signs. Distance decides sign vs nil placeholder. The x0 (left
+    edge) rides along so a token can later be assigned to its column."""
     out, i = [], 0
     while i < len(line):
         w = line[i]
         if (w["text"] in MINUS_TOKENS and i + 1 < len(line)
                 and _is_numeric_token(line[i + 1]["text"])
                 and line[i + 1]["x0"] - w["x1"] <= MAX_SIGN_GAP):
-            out.append("-" + line[i + 1]["text"])
+            out.append(("-" + line[i + 1]["text"], w["x0"]))
             i += 2
         else:
-            out.append(w["text"])
+            out.append((w["text"], w["x0"]))
             i += 1
     return out
+
+
+def _detect_value_floor(lines):
+    """Locate the left boundary of the value columns.
+
+    Returns an x-coordinate: any number whose left edge sits below it is a
+    reference-column entry (note / schedule / page number), not a value.
+    Returns None when no confident header is found — callers then fall back to
+    the magnitude heuristics.
+
+    Two anchors. First the period-header row (the line with the most 4-digit
+    year tokens) tells us where the value columns START (leftmost year) and how
+    MANY there are — too many means a segmented/multi-year sheet (BMW prints a
+    2025/2024 pair per business segment) where the value column isn't simply
+    "leftmost", so we bail. Then the boundary itself is taken from the
+    reference-column header word ("Note"/"Schedule"/"Page") sitting left of the
+    values: its right edge is exactly where the value columns begin. Anchoring
+    on the ref header beats anchoring on the year token, which can drift far
+    right inside a wide "As at March 31, 2025" header while the numbers below
+    align further left (BHEL).
+    """
+    xs = [w["x0"] for ln in lines for w in ln]
+    if not xs or max(xs) - min(xs) < 50:   # no real column spread
+        return None
+    best = None                    # (year_count, leftmost_year_x0)
+    for ln in lines:
+        yrs = [w["x0"] for w in ln if YEAR_RE.fullmatch(w["text"])]
+        if not yrs:
+            continue
+        cand = (len(yrs), min(yrs))   # most years wins; tie -> rightmost
+        if best is None or cand > best:
+            best = cand
+    if best is None or best[0] > MAX_VALUE_COLS:
+        return None
+    anchor = best[1]               # leftmost value-year column
+    # rightmost reference-column header that sits left of the value columns
+    ref_x1 = None
+    for ln in lines:
+        for w in ln:
+            if REF_HEADER_RE.match(w["text"]) and w["x1"] < anchor:
+                ref_x1 = w["x1"] if ref_x1 is None else max(ref_x1, w["x1"])
+    if ref_x1 is None:             # no reference column to strip
+        return None
+    return ref_x1 + REF_FLOOR_MARGIN
 
 
 def _lines_from_words(words, y_tol=2.5):
@@ -103,25 +161,42 @@ def _items_from_words(words, page_index):
             items.append(pending)
             pending = None
 
-    for line in _lines_from_words(words):
+    lines = _lines_from_words(words)
+    # locate the value columns once for the whole block; None falls back to
+    # the normalizer's magnitude heuristics (header not confidently found)
+    value_floor = _detect_value_floor(lines)
+    for line in lines:
         line.sort(key=lambda w: w["x0"])
-        toks = _merge_detached_minus(line)
+        toks = _merge_detached_minus(line)          # [(text, x0), ...]
+        texts = [t for t, _ in toks]
         # split into label prefix and trailing numeric tokens; nil
         # placeholders are tail members, not label text
         split = len(toks)
         for i in range(len(toks) - 1, -1, -1):
-            if _is_numeric_token(toks[i]) or toks[i] in PLACEHOLDER_TOKENS:
+            if _is_numeric_token(texts[i]) or texts[i] in PLACEHOLDER_TOKENS:
                 split = i
             else:
                 break
-        label = " ".join(toks[:split]).strip()
-        nums = toks[split:]
+        label = " ".join(texts[:split]).strip()
+        num_pairs = toks[split:]
         # a parenthetical can split across the boundary: "... (refer note"
         # | "15)" — the closing fragment looks numeric and would become the
         # value (closing_cash = 15!). Re-join it into the label.
-        while (label.count("(") > label.count(")") and nums
-               and re.fullmatch(r"[^()]*\)", nums[0])):
-            label = f"{label} {nums.pop(0)}"
+        while (label.count("(") > label.count(")") and num_pairs
+               and re.fullmatch(r"[^()]*\)", num_pairs[0][0])):
+            label = f"{label} {num_pairs.pop(0)[0]}"
+        # COLUMN GEOMETRY: a numeric token sitting LEFT of the leftmost value
+        # column is a reference-column entry (note / schedule / page number),
+        # not a value — drop it by POSITION, regardless of magnitude. This is
+        # what lets a bare small integer ("5") under a year header be read as
+        # a value. Guarded: if the filter would wipe out every number (header
+        # mis-detected for this row), keep the row and let the magnitude
+        # heuristics in the normalizer handle it.
+        if value_floor is not None:
+            kept = [p for p in num_pairs if p[1] >= value_floor]
+            if kept:
+                num_pairs = kept
+        nums = [t for t, _ in num_pairs]
         if label and nums:
             if prev_text and label[:1].islower():
                 label = f"{prev_text} {label}"

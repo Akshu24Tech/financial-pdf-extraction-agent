@@ -28,6 +28,10 @@ dependencies = [
     "rapidfuzz>=3.14",
 ]
 
+[project.scripts]
+finagent = "finagent.cli:main"
+
+
 [tool.setuptools]
 # The standalone single-file module at the repo root.
 py-modules = ["finagent_single"]

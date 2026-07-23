@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import profiler, locator, normalizer
+from . import profiler, locator, normalizer, unit_detector
 from .extractors import geometric
 from .schema import EXPECTED_METRICS, METRICS, metrics_for_statement
 from .validator import Validator
@@ -27,22 +27,12 @@ def _extract_basis(pdf_path, locations, log, label):
         extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
         log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
         for metric, ext in extractions.items():
-            # A metric matched on a NON-native statement (via `also_on`, e.g.
-            # depreciation found in the CF add-backs) is a FALLBACK only: take
-            # it solely when the native statement didn't yield the metric.
-            # Statements iterate BS->PL->CF, so the native reading always lands
-            # first. This keeps the clean P&L value where it exists (BHEL,
-            # Wilmar) and only fills the gap where the P&L groups it away
-            # (Newgen, HDFC) — without a second, conflicting vote.
             if METRICS[metric]["statement"] != code and metric in all_extractions:
                 continue
             all_extractions[metric] = ext
             v.add(metric, ext.value, source=ext.source, page=ext.page,
                   label_text=ext.raw_label)
 
-    # 6. validate, then 6b. derive what the identities fix exactly.
-    # Order matters: derived values must never feed the identity proofs —
-    # they satisfy the deriving identity by construction.
     report = derive(v.validate())
     return report, all_extractions
 
@@ -63,6 +53,13 @@ def run(pdf_path, out_path=None, verbose=True):
     # 1. profile
     doc = profiler.profile(pdf_path)
     log(f"[profile] {doc.summary()}")
+
+    # 1b. unit & period anchor engine
+    sample_text = " ".join(p.text for p in doc.pages[:15])
+    unit_info = unit_detector.detect_unit(sample_text)
+    period_info = unit_detector.detect_periods(sample_text)
+    log(f"[unit_anchor] Scale: {unit_info.unit_name} ({unit_info.currency}) | mult={unit_info.multiplier}")
+    log(f"[period_anchor] Periods: current='{period_info.current_period}', prior='{period_info.prior_period}'")
 
     # 3. locate statement pages — PRIMARY (prefers consolidated) plus the
     # standalone/consolidated counterpart, so both are extracted separately.
