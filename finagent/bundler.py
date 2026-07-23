@@ -40,15 +40,23 @@ from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font, PatternFill
 
+# Alias modular namespaces to the current module to support the bundled single-file build
+profiler = sys.modules[__name__]
+locator = sys.modules[__name__]
+normalizer = sys.modules[__name__]
+unit_detector = sys.modules[__name__]
+geometric = sys.modules[__name__]
+
 '''
 
 
 def clean_imports(content: str) -> str:
-    """Strip top-level standard imports and relative imports from module source."""
+    """Strip top-level standard imports, relative imports, and __main__ blocks from module source."""
     lines = content.splitlines()
     out = []
     in_docstring = False
     docstring_quote = None
+    in_main = False
 
     for i, line in enumerate(lines):
         sline = line.strip()
@@ -62,6 +70,16 @@ def clean_imports(content: str) -> str:
         if in_docstring:
             if docstring_quote in sline:
                 in_docstring = False
+            continue
+
+        if in_main:
+            if not line or line[0].isspace():
+                continue
+            else:
+                in_main = False
+
+        if sline.startswith('if __name__ == "__main__":') or sline.startswith("if __name__ == '__main__':"):
+            in_main = True
             continue
 
         if sline.startswith("from .") or sline.startswith("import ."):
