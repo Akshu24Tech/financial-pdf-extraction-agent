@@ -114,7 +114,7 @@ def bundle() -> str:
         content = path.read_text(encoding="utf-8")
         cleaned = clean_imports(content)
         parts.append("# =============================================================================\n")
-        parts.append(f"# {section_name} (from finagent/{path.relative_to(PACKAGE_DIR)})\n")
+        parts.append(f"# {section_name} (from finagent/{path.relative_to(PACKAGE_DIR).as_posix()})\n")
         parts.append("# =============================================================================\n")
 
         parts.append(cleaned)
