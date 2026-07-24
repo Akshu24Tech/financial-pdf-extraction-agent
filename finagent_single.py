@@ -680,7 +680,7 @@ def _is_continuation(text, cue_pats):
 
 # =============================================================================
 
-# GEOMETRIC EXTRACTOR (from finagent/extractors\geometric.py)
+# GEOMETRIC EXTRACTOR (from finagent/extractors/geometric.py)
 
 # =============================================================================
 
