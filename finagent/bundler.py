@@ -148,11 +148,13 @@ def main():
         if not TARGET_FILE.exists():
             print("Error: finagent_single.py does not exist!", file=sys.stderr)
             sys.exit(1)
-        existing = TARGET_FILE.read_text(encoding="utf-8")
-        if existing.strip() != content.strip():
+        existing = TARGET_FILE.read_text(encoding="utf-8").replace("\r\n", "\n")
+        content_norm = content.replace("\r\n", "\n")
+        if existing.strip() != content_norm.strip():
             print("Error: finagent_single.py is out of sync with finagent/ package!", file=sys.stderr)
             print("Run 'python -m finagent.bundler' to update it.", file=sys.stderr)
             sys.exit(1)
+
         print("OK: finagent_single.py is up-to-date.")
         sys.exit(0)
 
