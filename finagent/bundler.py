@@ -46,6 +46,7 @@ locator = sys.modules[__name__]
 normalizer = sys.modules[__name__]
 unit_detector = sys.modules[__name__]
 geometric = sys.modules[__name__]
+geometry = sys.modules[__name__]
 
 '''
 
