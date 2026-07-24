@@ -82,13 +82,13 @@ def clean_imports(content: str) -> str:
             in_main = True
             continue
 
-        if sline.startswith(("from .", "import .")):
+        if sline.startswith(("from .", "import .", "from typing import")):
             continue
         if sline in (
             "import re", "import sys", "import time", "from collections import defaultdict",
             "from dataclasses import dataclass, field", "from enum import Enum", "from pathlib import Path",
             "from statistics import median", "from pypdf import PdfReader", "import pdfplumber",
-            "from rapidfuzz import fuzz", "from openpyxl import Workbook", "from typing import Optional, List, Dict, Tuple"
+            "from rapidfuzz import fuzz", "from openpyxl import Workbook"
         ):
             continue
 
