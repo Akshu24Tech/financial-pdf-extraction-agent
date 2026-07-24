@@ -6,7 +6,8 @@ from financial statement page headers and text blocks.
 """
 import re
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Tuple
+
 
 
 @dataclass

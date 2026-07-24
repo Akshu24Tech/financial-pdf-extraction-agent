@@ -264,6 +264,8 @@ def metrics_for_statement(code):
 # =============================================================================
 
 from dataclasses import dataclass
+from typing import Optional, List, Tuple
+
 
 
 @dataclass
