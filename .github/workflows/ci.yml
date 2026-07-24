@@ -36,12 +36,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest ruff
+          pip install -e .
 
       - name: Lint with ruff
         run: ruff check .
 
       - name: Verify single-file bundle sync
-        run: python -m finagent.bundler --check
+        run: PYTHONPATH=. python -m finagent.bundler --check
+
 
 
       - name: Run tests
