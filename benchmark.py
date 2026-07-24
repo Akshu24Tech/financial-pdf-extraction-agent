@@ -23,7 +23,7 @@ for pdf in sorted(TEST_DIR.glob("*.pdf")):
         results.append((pdf.name, c[Status.VERIFIED], c[Status.PROBABLE],
                         c[Status.FLAGGED], c[Status.DERIVED],
                         c[Status.MISSING], time.time() - t0))
-    except Exception:
+    except Exception:  # noqa: BLE001
         print(f"{pdf.name}: CRASHED")
         traceback.print_exc()
         results.append((pdf.name, 0, 0, 0, 0, len(Status), time.time() - t0))

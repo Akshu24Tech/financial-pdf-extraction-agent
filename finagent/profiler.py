@@ -55,7 +55,7 @@ def profile(pdf_path):
             w, h = h, w
         try:
             text = page.extract_text() or ""
-        except Exception:
+        except Exception:  # noqa: BLE001
             text = ""
         doc.pages.append(PageProfile(
             index=i, width=w, height=h, landscape=w > h,

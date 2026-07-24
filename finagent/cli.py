@@ -6,8 +6,8 @@ Usage:
     finagent golden [filter]
     finagent build-single [--check]
 """
-import sys
 import argparse
+import sys
 from pathlib import Path
 
 from .pipeline import run as run_pipeline
