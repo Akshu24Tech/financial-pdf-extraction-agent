@@ -263,9 +263,6 @@ def metrics_for_statement(code):
 
 # =============================================================================
 
-from dataclasses import dataclass
-
-
 @dataclass
 class UnitInfo:
     unit_name: str         # e.g., "Crores", "Lakhs", "Millions", "Thousands", "Units"
@@ -455,8 +452,6 @@ def logical_pages(page, words):
 # LOCATOR (from finagent/locator.py)
 
 # =============================================================================
-
-from dataclasses import dataclass
 
 # What counts as a "money figure" when deciding a page carries a real
 # statement (not a ToC mention). Two shapes: a long comma-grouped integer
@@ -688,10 +683,6 @@ def _is_continuation(text, cue_pats):
 # GEOMETRIC EXTRACTOR (from finagent/extractors\geometric.py)
 
 # =============================================================================
-
-from dataclasses import dataclass
-
-
 
 # tokens that look like report numbers: 1,49,982.45  (1,234)  123.45  -
 NUM_CHARS = set("0123456789,().%-−–—")
@@ -973,10 +964,6 @@ def extract(pdf_path, page_indices, cue_pats=None):
 # NORMALIZER (from finagent/normalizer.py)
 
 # =============================================================================
-
-from dataclasses import dataclass
-
-
 
 MATCH_THRESHOLD = 88
 
@@ -1442,11 +1429,6 @@ def derive(report):
 # WRITER (from finagent/writer.py)
 
 # =============================================================================
-
-from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-from openpyxl.styles import Font, PatternFill
-
-
 
 def _clean(value):
     """Strip control/illegal chars openpyxl refuses to write to a cell.

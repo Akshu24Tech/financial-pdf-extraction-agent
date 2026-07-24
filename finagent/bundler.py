@@ -82,14 +82,7 @@ def clean_imports(content: str) -> str:
             in_main = True
             continue
 
-        if sline.startswith(("from .", "import .", "from typing import")):
-            continue
-        if sline in (
-            "import re", "import sys", "import time", "from collections import defaultdict",
-            "from dataclasses import dataclass, field", "from enum import Enum", "from pathlib import Path",
-            "from statistics import median", "from pypdf import PdfReader", "import pdfplumber",
-            "from rapidfuzz import fuzz", "from openpyxl import Workbook"
-        ):
+        if sline.startswith(("import ", "from ")):
             continue
 
         out.append(line)
@@ -151,6 +144,15 @@ def main():
         content_norm = content.replace("\r\n", "\n")
         if existing.strip() != content_norm.strip():
             print("Error: finagent_single.py is out of sync with finagent/ package!", file=sys.stderr)
+            import difflib
+            diff = difflib.unified_diff(
+                existing.strip().splitlines(),
+                content_norm.strip().splitlines(),
+                fromfile="existing (finagent_single.py)",
+                tofile="generated (bundler output)",
+                lineterm=""
+            )
+            print("\n".join(list(diff)[:30]), file=sys.stderr)
             print("Run 'python -m finagent.bundler' to update it.", file=sys.stderr)
             sys.exit(1)
 
