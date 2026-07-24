@@ -46,8 +46,10 @@ include = ["finagent*"]
 
 [tool.ruff]
 line-length = 100
+exclude = ["finagent_single.py"]
 
 [tool.ruff.lint]
+
 # Default ruff rules (pyflakes F + a sane pycodestyle subset E) catch real
 # bugs — undefined names, unused imports, syntax errors — without nitpicking
 # style. Tighten later (Level 7) once the habit is in place.

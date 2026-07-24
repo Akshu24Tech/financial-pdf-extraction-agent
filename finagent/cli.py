@@ -47,6 +47,8 @@ def main():
             parser.print_help()
     elif args.command == "benchmark":
         import benchmark
+        _ = benchmark
+
         # benchmark script automatically executes
     elif args.command == "golden":
         import golden_check
