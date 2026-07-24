@@ -3,8 +3,8 @@
 Generates the single-file distribution finagent_single.py from the modular finagent/ package.
 Supports --check flag for CI synchronization verification.
 """
-import sys
 import argparse
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -61,13 +61,12 @@ def clean_imports(content: str) -> str:
 
     for i, line in enumerate(lines):
         sline = line.strip()
-        if i == 0 or (len(out) == 0 and not sline):
-            if sline.startswith('"""') or sline.startswith("'''"):
-                docstring_quote = sline[:3]
-                if sline.count(docstring_quote) >= 2 and len(sline) > 3:
-                    continue
-                in_docstring = True
+        if (i == 0 or (len(out) == 0 and not sline)) and sline.startswith(('"""', "'''")):
+            docstring_quote = sline[:3]
+            if sline.count(docstring_quote) >= 2 and len(sline) > 3:
                 continue
+            in_docstring = True
+            continue
         if in_docstring:
             if docstring_quote in sline:
                 in_docstring = False
@@ -79,11 +78,11 @@ def clean_imports(content: str) -> str:
             else:
                 in_main = False
 
-        if sline.startswith('if __name__ == "__main__":') or sline.startswith("if __name__ == '__main__':"):
+        if sline.startswith(('if __name__ == "__main__":', "if __name__ == '__main__':")):
             in_main = True
             continue
 
-        if sline.startswith("from .") or sline.startswith("import ."):
+        if sline.startswith(("from .", "import .")):
             continue
         if sline in (
             "import re", "import sys", "import time", "from collections import defaultdict",

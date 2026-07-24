@@ -7,10 +7,10 @@ what CI can run fast on a clean machine.
 
 Run locally:  pytest -v
 """
-from finagent.normalizer import parse_number, clean_label, match_label
-from finagent.validator import Validator, Status, within_tolerance
 from finagent.deriver import derive
-from finagent.schema import metrics_for_statement, METRICS
+from finagent.normalizer import clean_label, match_label, parse_number
+from finagent.schema import METRICS, metrics_for_statement
+from finagent.validator import Status, Validator, within_tolerance
 
 
 # ---------------------------------------------------------------------------

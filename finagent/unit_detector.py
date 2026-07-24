@@ -6,8 +6,6 @@ from financial statement page headers and text blocks.
 """
 import re
 from dataclasses import dataclass
-from typing import Optional, List, Tuple
-
 
 
 @dataclass
@@ -21,11 +19,11 @@ class UnitInfo:
 @dataclass
 class PeriodHeader:
     current_period: str    # e.g. "31-Mar-2025" or "FY25"
-    prior_period: Optional[str] = None  # e.g. "31-Mar-2024" or "FY24"
-    columns_detected: List[str] = None
+    prior_period: str | None = None  # e.g. "31-Mar-2024" or "FY24"
+    columns_detected: list[str] = None
 
 
-UNIT_PATTERNS: List[Tuple[str, str, str, float]] = [
+UNIT_PATTERNS: list[tuple[str, str, str, float]] = [
     # (regex_pattern, unit_name, currency, multiplier)
     (r"(?:₹|rs\.?|rupees?)\s+(?:in\s+)?crores?", "Crores", "INR", 10_000_000.0),
     (r"(?:₹|rs\.?|rupees?)\s+(?:in\s+)?lakhs?", "Lakhs", "INR", 100_000.0),

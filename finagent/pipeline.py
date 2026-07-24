@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import profiler, locator, normalizer, unit_detector
+from . import locator, normalizer, profiler, unit_detector
 from .extractors import geometric
 from .schema import EXPECTED_METRICS, METRICS, metrics_for_statement
 from .validator import Validator
