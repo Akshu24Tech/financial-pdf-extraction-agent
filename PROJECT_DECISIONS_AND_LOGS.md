@@ -70,6 +70,11 @@ Financial statements are self-verifying systems ($Assets = Liabilities + Equity$
 - **Problem**: Financial reports express numbers in varying units (*₹ in Crores*, *₹ in Lakhs*, *USD Millions*, *€ Millions*, *Rs in Thousands*) and comparative columns (`FY25` vs `FY24`).
 - **Decision**: Added automated header scanning in `unit_detector.py` to extract scale multipliers and anchor period dates.
 
+### Decision 4: Geometry Fixer & Dynamic Page-by-Page Gutter Splitting (`geometry.py`)
+- **Problem**: Companies like Airtel & Reliance publish A3 landscape PDFs where two A4 pages sit side-by-side on one physical sheet. Extracting text directly across the sheet merges left-page line labels with right-page note values. Conversely, true single-page wide landscape tables (like BMW) must NOT be split.
+- **Decision**: Implemented `geometry.py` with X-axis histogram binning, center-weighted gutter spine detection, and 2 conservative validation guards (`MIN_SIDE_RATIO = 0.2` and alphabetic word density `< 30%`).
+- **Benefit**: Evaluates pages dynamically page-by-page. A3 two-up pages split cleanly into 2 logical pages, while single portrait and wide numerical landscape tables are preserved 100% intact. Standalone execution: `python -m finagent.geometry <pdf_path> [page_no]`.
+
 ---
 
 ## 3. Benchmark & Ground-Truth Verification Results
@@ -121,8 +126,12 @@ Ran ground-truth verification gate (`golden_check.py`) across 10 corporate annua
 - **Focus**: Explaining the 1-second `pypdf` pre-flight pass, text quality scoring (`OK`, `SUSPECT`, `EMPTY`), and orientation detection.
 - **Visual**: Hand-drawn minimalist architecture sketch.
 
+### Post #3: Stage 2 — Geometry Fixer Deep Dive (`geometry.py`)
+- **Core Hook**: "How to handle A3 Two-Up side-by-side pages without ruining table coordinate math."
+- **Focus**: Explaining the Gutter Spine Histogram algorithm, center-weighted spine search, mixed PDF page handling, and the 2 conservative validation guards that prevent false splits on wide numerical landscape tables.
+
 ### Upcoming Posts Schedule:
-- **Post #3**: Stage 2 — `geometry.py` (Handling A3 Two-Up side-by-side pages).
 - **Post #4**: Stage 5 — `normalizer.py` (Stripping Note Ref columns like Note 14).
 - **Post #5**: Stage 6 — `validator.py` (The Accounting Identity Verification Engine).
 - **Post #6**: CI/CD & Reliability Engineering in Python.
+
