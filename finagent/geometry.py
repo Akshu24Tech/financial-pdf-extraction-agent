@@ -59,3 +59,23 @@ def logical_pages(page, words):
     """One physical page -> list of logical word groups (1 or 2)."""
     halves = split_two_up(page, words)
     return list(halves) if halves else [words]
+
+
+if __name__ == "__main__":
+    import sys
+    import pdfplumber
+    if len(sys.argv) < 2:
+        print("Usage: python -m finagent.geometry <pdf_path> [page_num_1based]")
+        sys.exit(1)
+    pdf_path = sys.argv[1]
+    page_no = int(sys.argv[2]) - 1 if len(sys.argv) > 2 else 0
+    with pdfplumber.open(pdf_path) as pdf:
+        p = pdf.pages[page_no]
+        words = p.extract_words()
+        halves = split_two_up(p, words)
+        if halves:
+            left, right = halves
+            print(f"Page {page_no + 1} is TWO-UP (A3 Split!): Left words = {len(left)}, Right words = {len(right)}")
+        else:
+            print(f"Page {page_no + 1} is SINGLE LOGICAL PAGE (No split). Total words = {len(words)}")
+
