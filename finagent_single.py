@@ -350,6 +350,7 @@ class DocProfile:
     path: str
     n_pages: int
     pages: list = field(default_factory=list)
+    logical_pages: list = field(default_factory=list)  # NEW: logical pages after geometry split
 
     @property
     def landscape_ratio(self):
@@ -373,20 +374,37 @@ def _quality(text):
 def profile(pdf_path):
     reader = PdfReader(pdf_path)
     doc = DocProfile(path=str(pdf_path), n_pages=len(reader.pages))
-    for i, page in enumerate(reader.pages):
-        box = page.mediabox
-        w, h = float(box.width), float(box.height)
-        rotation = page.get("/Rotate") or 0
-        if rotation in (90, 270):
-            w, h = h, w
-        try:
-            text = page.extract_text() or ""
-        except Exception:  # noqa: BLE001
-            text = ""
-        doc.pages.append(PageProfile(
-            index=i, width=w, height=h, landscape=w > h,
-            text=text, text_quality=_quality(text),
-        ))
+    with pdfplumber.open(pdf_path) as pdf:
+        for i, page in enumerate(reader.pages):
+            box = page.mediabox
+            w, h = float(box.width), float(box.height)
+            rotation = page.get("/Rotate") or 0
+            if rotation in (90, 270):
+                w, h = h, w
+            try:
+                text = page.extract_text() or ""
+            except Exception:  # noqa: BLE001
+                text = ""
+            doc.pages.append(PageProfile(
+                index=i, width=w, height=h, landscape=w > h,
+                text=text, text_quality=_quality(text),
+            ))
+
+            # --- GEOMETRY STAGE: Split physical page into logical pages ---
+            pdfplumber_page = pdf.pages[i]
+            words = pdfplumber_page.extract_words(use_text_flow=False, keep_blank_chars=False)
+            upright = [w for w in words if w.get("upright", True)]
+            if len(upright) >= len(words) / 2:
+                words = upright
+            logical = geometry.logical_pages(pdfplumber_page, words)
+            for group in logical:
+                # Extract text from the logical page (for scoring)
+                logical_text = " ".join(w["text"] for w in group)
+                doc.logical_pages.append({
+                    "physical_page": i,
+                    "text": logical_text,
+                    "text_quality": _quality(logical_text),
+                })
     return doc
 
 
@@ -523,6 +541,39 @@ def _is_heading(line, title_pats):
     return False
 
 
+def verify_page(pdf_path: str, page_num: int, cue_pats: list) -> bool:
+    """Verify a candidate page has:
+    - >= 8 numeric tokens (already checked by locator)
+    - >= 2 distinct x-aligned numeric columns (catches prose/notes pages)
+    - >= 5 raw line items from the geometric extractor (fast dry-run)
+    """
+    with pdfplumber.open(pdf_path) as pdf:
+        page = pdf.pages[page_num - 1]  # 1-indexed
+        text = page.extract_text()
+
+        # (A) Token check (already in locator, but double-check)
+        numeric_tokens = len(NUM_RE.findall(text))
+        if numeric_tokens < 8:
+            return False
+
+        # (B) Column check: >= 2 distinct x-aligned numeric columns
+        words = page.extract_words()
+        x_coords = [w['x0'] for w in words if w['text'].replace('.', '').isdigit()]
+        distinct_columns = len({round(x / 50) * 50 for x in x_coords})  # 50px tolerance
+        if distinct_columns < 2:
+            return False
+
+        # (C) Dry-run extractor: >= 5 raw line items
+        try:
+            items = extract(pdf_path, [page_num - 1], cue_pats)  # 0-based
+            if len(items) < 5:
+                return False
+        except Exception:  # noqa: BLE001
+            return False
+
+    return True
+
+
 def _score_page(text, title_pats, cue_pats):
     t = text.lower()
     title = sum(3 for p in title_pats if _search(p, t))
@@ -577,14 +628,14 @@ def _score_page(text, title_pats, cue_pats):
 
 
 def _scored_pages(doc_profile, title_pats, cue_pats):
-    """All pages that score as this statement: (score, basis, heading, index)."""
+    """All logical pages that score as this statement: (score, basis, heading, logical_index)."""
     scored = []
-    for p in doc_profile.pages:
-        if p.text_quality == "EMPTY":
+    for logical_idx, logical_page in enumerate(doc_profile.logical_pages):
+        if logical_page["text_quality"] == "EMPTY":
             continue
-        s, basis, heading = _score_page(p.text, title_pats, cue_pats)
+        s, basis, heading = _score_page(logical_page["text"], title_pats, cue_pats)
         if s > 0:
-            scored.append((s, basis, heading, p.index))
+            scored.append((s, basis, heading, logical_idx))
     return scored
 
 
@@ -594,7 +645,7 @@ def _pick(scored, doc_profile, cue_pats, code, want_basis=None,
 
     want_basis: if given, restrict to pages stamped that basis (used to find
     the standalone counterpart). prefer_consolidated: soft preference within
-    the tier (the primary selection). exclude: page indices already taken by
+    the tier (the primary selection). exclude: logical page indices already taken by
     the primary, so the alternate basis can't reuse them.
     """
     if not scored:
@@ -615,17 +666,33 @@ def _pick(scored, doc_profile, cue_pats, code, want_basis=None,
     # ties go to the EARLIER page: the statement itself precedes the
     # notes/SOCIE pages that echo its keywords
     pool.sort(key=lambda x: (-x[0], x[3]))
-    score, basis, _, best = pool[0]
-    # Statements may continue on a neighbouring page (which lacks the title
-    # there). Only adjacent pages qualify — a distant page that also scores is
-    # a DIFFERENT copy of the statement (standalone, prior period, summary) and
-    # mixing it corrupts the metric set.
-    pages = [best]
+
+    # --- VERIFIED PAGE SELECTION ---
+    # Try each candidate in score order until one passes verification
+    for score, basis, _, best in pool:
+        # Get the physical page and logical text for verification
+        logical_page = doc_profile.logical_pages[best]
+        physical_page = logical_page["physical_page"] + 1  # 1-indexed
+        if verify_page(doc_profile.path, physical_page, cue_pats):
+            break
+    else:
+        # No candidate passed verification; fall back to the top-scoring one
+        score, basis, _, best = pool[0]
+        logical_page = doc_profile.logical_pages[best]
+        physical_page = logical_page["physical_page"] + 1  # 1-indexed
+
+    # Statements may continue on a neighbouring logical page (which lacks the title
+    # there). Only adjacent logical pages on the SAME physical page qualify.
+    logical_page = doc_profile.logical_pages[best]
+    physical_page = logical_page["physical_page"]
+    pages = [physical_page + 1]  # Return 1-indexed physical page
     for nb in (best - 1, best + 1):
-        if 0 <= nb < doc_profile.n_pages and _is_continuation(
-                doc_profile.pages[nb].text, cue_pats):
-            pages.append(nb)
-    return Location(code, basis, pages, score)
+        if 0 <= nb < len(doc_profile.logical_pages):
+            neighbour = doc_profile.logical_pages[nb]
+            if neighbour["physical_page"] == physical_page and _is_continuation(
+                    neighbour["text"], cue_pats):
+                pages.append(physical_page)  # Continuation on same physical page
+    return Location(code, basis, sorted(set(pages)), score)
 
 
 def locate(doc_profile):
