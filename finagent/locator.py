@@ -7,6 +7,10 @@ has no consolidated statements (or doesn't say).
 import re
 from dataclasses import dataclass
 
+import pdfplumber
+
+from .extractors.geometric import extract
+
 # What counts as a "money figure" when deciding a page carries a real
 # statement (not a ToC mention). Two shapes: a long comma-grouped integer
 # ("1,58,788") OR a decimal figure with two places ("8207.65"). The decimal
@@ -83,9 +87,6 @@ def verify_page(pdf_path: str, page_num: int, cue_pats: list) -> bool:
     - >= 2 distinct x-aligned numeric columns (catches prose/notes pages)
     - >= 5 raw line items from the geometric extractor (fast dry-run)
     """
-    import pdfplumber
-    from .extractors.geometric import extract
-
     with pdfplumber.open(pdf_path) as pdf:
         page = pdf.pages[page_num - 1]  # 1-indexed
         text = page.extract_text()
@@ -98,7 +99,7 @@ def verify_page(pdf_path: str, page_num: int, cue_pats: list) -> bool:
         # (B) Column check: >= 2 distinct x-aligned numeric columns
         words = page.extract_words()
         x_coords = [w['x0'] for w in words if w['text'].replace('.', '').isdigit()]
-        distinct_columns = len(set(round(x / 50) * 50 for x in x_coords))  # 50px tolerance
+        distinct_columns = len({round(x / 50) * 50 for x in x_coords})  # 50px tolerance
         if distinct_columns < 2:
             return False
 
@@ -107,7 +108,7 @@ def verify_page(pdf_path: str, page_num: int, cue_pats: list) -> bool:
             items = extract(pdf_path, [page_num - 1], cue_pats)  # 0-based
             if len(items) < 5:
                 return False
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
 
     return True
@@ -231,13 +232,7 @@ def _pick(scored, doc_profile, cue_pats, code, want_basis=None,
             if neighbour["physical_page"] == physical_page and _is_continuation(
                     neighbour["text"], cue_pats):
                 pages.append(physical_page)  # Continuation on same physical page
-    return Location(code, basis, sorted(list(set(pages))), score)
-    pages = [best]
-    for nb in (best - 1, best + 1):
-        if 0 <= nb < doc_profile.n_pages and _is_continuation(
-                doc_profile.pages[nb].text, cue_pats):
-            pages.append(nb)
-    return Location(code, basis, pages, score)
+    return Location(code, basis, sorted(set(pages)), score)
 
 
 def locate(doc_profile):

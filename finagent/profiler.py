@@ -6,8 +6,9 @@ the few pages we actually extract from.
 import re
 from dataclasses import dataclass, field
 
-from pypdf import PdfReader
 import pdfplumber
+from pypdf import PdfReader
+
 from . import geometry  # NEW: for geometry stage
 
 
