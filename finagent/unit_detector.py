@@ -4,21 +4,22 @@ Detects unit declarations (e.g. '₹ in Lakhs', 'Rs in Crores', 'USD Millions',
 'in Thousands') and period headers ('As of March 31, 2025', 'FY25 vs FY24')
 from financial statement page headers and text blocks.
 """
+
 import re
 from dataclasses import dataclass
 
 
 @dataclass
 class UnitInfo:
-    unit_name: str         # e.g., "Crores", "Lakhs", "Millions", "Thousands", "Units"
-    currency: str          # e.g., "INR", "USD", "EUR", "UNKNOWN"
-    multiplier: float      # e.g., Crores -> 10_000_000, Lakhs -> 100_000, Millions -> 1_000_000
+    unit_name: str  # e.g., "Crores", "Lakhs", "Millions", "Thousands", "Units"
+    currency: str  # e.g., "INR", "USD", "EUR", "UNKNOWN"
+    multiplier: float  # e.g., Crores -> 10_000_000, Lakhs -> 100_000, Millions -> 1_000_000
     raw_text: str
 
 
 @dataclass
 class PeriodHeader:
-    current_period: str    # e.g. "31-Mar-2025" or "FY25"
+    current_period: str  # e.g. "31-Mar-2025" or "FY25"
     prior_period: str | None = None  # e.g. "31-Mar-2024" or "FY24"
     columns_detected: list[str] = None
 
@@ -42,7 +43,7 @@ PERIOD_DATE_PATTERN = re.compile(
     r"(?:as\s+at|as\s+of|for\s+the\s+year\s+ended)?\s*"
     r"(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}"
     r"|\d{4}-\d{2}-\d{2}|fy\s*\d{2,4})",
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 
@@ -62,7 +63,7 @@ def detect_periods(text: str) -> PeriodHeader:
     matches = PERIOD_DATE_PATTERN.findall(text)
     if not matches:
         return PeriodHeader(current_period="Current", prior_period="Prior", columns_detected=[])
-    
+
     unique_dates = []
     for m in matches:
         m_str = m.strip()

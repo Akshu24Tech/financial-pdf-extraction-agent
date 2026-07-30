@@ -12,6 +12,7 @@ becomes two logical pages, otherwise merged lines would read
 Output is raw: (label, value_strings, page). Parsing/normalising the
 numbers is the normalizer's job.
 """
+
 import re
 from dataclasses import dataclass
 
@@ -51,8 +52,8 @@ MAX_VALUE_COLS = 3
 @dataclass
 class RawItem:
     label: str
-    values: list      # raw strings, left to right
-    page: int         # 0-based physical page
+    values: list  # raw strings, left to right
+    page: int  # 0-based physical page
     source: str = "geometric"
     side: str = None  # current / non-current, from the enclosing BS section
 
@@ -71,9 +72,12 @@ def _merge_detached_minus(line):
     out, i = [], 0
     while i < len(line):
         w = line[i]
-        if (w["text"] in MINUS_TOKENS and i + 1 < len(line)
-                and _is_numeric_token(line[i + 1]["text"])
-                and line[i + 1]["x0"] - w["x1"] <= MAX_SIGN_GAP):
+        if (
+            w["text"] in MINUS_TOKENS
+            and i + 1 < len(line)
+            and _is_numeric_token(line[i + 1]["text"])
+            and line[i + 1]["x0"] - w["x1"] <= MAX_SIGN_GAP
+        ):
             out.append(("-" + line[i + 1]["text"], w["x0"]))
             i += 2
         else:
@@ -102,26 +106,26 @@ def _detect_value_floor(lines):
     align further left (BHEL).
     """
     xs = [w["x0"] for ln in lines for w in ln]
-    if not xs or max(xs) - min(xs) < 50:   # no real column spread
+    if not xs or max(xs) - min(xs) < 50:  # no real column spread
         return None
-    best = None                    # (year_count, leftmost_year_x0)
+    best = None  # (year_count, leftmost_year_x0)
     for ln in lines:
         yrs = [w["x0"] for w in ln if YEAR_RE.fullmatch(w["text"])]
         if not yrs:
             continue
-        cand = (len(yrs), min(yrs))   # most years wins; tie -> rightmost
+        cand = (len(yrs), min(yrs))  # most years wins; tie -> rightmost
         if best is None or cand > best:
             best = cand
     if best is None or best[0] > MAX_VALUE_COLS:
         return None
-    anchor = best[1]               # leftmost value-year column
+    anchor = best[1]  # leftmost value-year column
     # rightmost reference-column header that sits left of the value columns
     ref_x1 = None
     for ln in lines:
         for w in ln:
             if REF_HEADER_RE.match(w["text"]) and w["x1"] < anchor:
                 ref_x1 = w["x1"] if ref_x1 is None else max(ref_x1, w["x1"])
-    if ref_x1 is None:             # no reference column to strip
+    if ref_x1 is None:  # no reference column to strip
         return None
     return ref_x1 + REF_FLOOR_MARGIN
 
@@ -140,20 +144,20 @@ def _lines_from_words(words, y_tol=2.5):
 def _items_from_words(words, page_index):
     items = []
     section = None
-    side = None   # current / non-current: duplicate labels ("- Trade
-                  # receivables") appear under both BS sections
-    side_heading = None   # text of the line that set the side; an
-                          # UNLABELED numeric row ENDING its block is the
-                          # section subtotal (Airtel prints "4,467,716
-                          # 3,862,549" with no label at all)
-    pending = None        # candidate subtotal: only real if no labeled row
-                          # follows it before the block closes (a subtotal
-                          # is the LAST row of its section, so a mid-block
-                          # orphan from a wrapped label is discarded)
-    prev_text = None      # immediately-preceding text-only line: a numeric
-                          # row whose label starts lowercase is its WRAPPED
-                          # continuation ("Profit for the year, representing
-                          # total" + "comprehensive income ... 419,056")
+    side = None  # current / non-current: duplicate labels ("- Trade
+    # receivables") appear under both BS sections
+    side_heading = None  # text of the line that set the side; an
+    # UNLABELED numeric row ENDING its block is the
+    # section subtotal (Airtel prints "4,467,716
+    # 3,862,549" with no label at all)
+    pending = None  # candidate subtotal: only real if no labeled row
+    # follows it before the block closes (a subtotal
+    # is the LAST row of its section, so a mid-block
+    # orphan from a wrapped label is discarded)
+    prev_text = None  # immediately-preceding text-only line: a numeric
+    # row whose label starts lowercase is its WRAPPED
+    # continuation ("Profit for the year, representing
+    # total" + "comprehensive income ... 419,056")
 
     def flush_pending():
         nonlocal pending
@@ -167,7 +171,7 @@ def _items_from_words(words, page_index):
     value_floor = _detect_value_floor(lines)
     for line in lines:
         line.sort(key=lambda w: w["x0"])
-        toks = _merge_detached_minus(line)          # [(text, x0), ...]
+        toks = _merge_detached_minus(line)  # [(text, x0), ...]
         texts = [t for t, _ in toks]
         # split into label prefix and trailing numeric tokens; nil
         # placeholders are tail members, not label text
@@ -182,8 +186,11 @@ def _items_from_words(words, page_index):
         # a parenthetical can split across the boundary: "... (refer note"
         # | "15)" — the closing fragment looks numeric and would become the
         # value (closing_cash = 15!). Re-join it into the label.
-        while (label.count("(") > label.count(")") and num_pairs
-               and re.fullmatch(r"[^()]*\)", num_pairs[0][0])):
+        while (
+            label.count("(") > label.count(")")
+            and num_pairs
+            and re.fullmatch(r"[^()]*\)", num_pairs[0][0])
+        ):
             label = f"{label} {num_pairs.pop(0)[0]}"
         # COLUMN GEOMETRY: a numeric token sitting LEFT of the leftmost value
         # column is a reference-column entry (note / schedule / page number),
@@ -206,8 +213,7 @@ def _items_from_words(words, page_index):
             # qualify with the section heading ("ASSETS" -> "total assets")
             # so the normalizer can match it. A misattributed section simply
             # fails the fuzzy threshold and the row stays unmatched.
-            if section and re.fullmatch(r"(total|basic|diluted):?", label,
-                                        re.IGNORECASE):
+            if section and re.fullmatch(r"(total|basic|diluted):?", label, re.IGNORECASE):
                 label = f"{label.rstrip(':')} {section}"
             # a total-ish row ("TOTAL LIABILITIES", "NET CURRENT ASSETS")
             # closes the block — totals FOLLOW subtotals, so a pending
@@ -220,26 +226,27 @@ def _items_from_words(words, page_index):
                 pending = None
             if re.match(r"total\b", label, re.IGNORECASE):
                 side_heading = None
-            items.append(RawItem(label=label, values=nums, page=page_index,
-                                 side=side))
+            items.append(RawItem(label=label, values=nums, page=page_index, side=side))
         elif nums and side_heading:
             prev_text = None
             # unlabeled numeric row inside a current/non-current block:
             # candidate subtotal (last one wins). A wrong synthesis either
             # fails the fuzzy gate (absence), loses the first-wins tie to
             # the real row, or breaks a composition identity (FLAGGED).
-            pending = RawItem(label=f"total {side_heading}", values=nums,
-                              page=page_index, side=side)
+            pending = RawItem(
+                label=f"total {side_heading}", values=nums, page=page_index, side=side
+            )
         elif label:
-            flush_pending()   # a heading closes the block: the pending
-                              # unlabeled row WAS its last row = subtotal
+            flush_pending()  # a heading closes the block: the pending
+            # unlabeled row WAS its last row = subtotal
             prev_text = label
             # a text-only line is a section heading candidate; strip leading
             # roman/decimal numbering ("I. INCOME" -> "income") and heading
             # parentheticals, which are unit/face-value noise ("EARNINGS PER
             # EQUITY SHARE (Face value 1/- per share)")
-            section = re.sub(r"^[\divxlc]+[.)]\s*", "",
-                             re.sub(r"\([^)]*\)", " ", label.lower())).strip()
+            section = re.sub(
+                r"^[\divxlc]+[.)]\s*", "", re.sub(r"\([^)]*\)", " ", label.lower())
+            ).strip()
             # "non-current" contains "current": test it first. Headings that
             # mention neither leave the side untouched ("Financial assets").
             if re.search(r"non[- ]current", section):

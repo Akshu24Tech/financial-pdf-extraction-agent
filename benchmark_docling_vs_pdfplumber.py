@@ -10,24 +10,22 @@ on Airtel, TCS, and Newgen PDFs.
 """
 
 import json
+import os
 import re
-from pathlib import Path
-from typing import List, Dict, Any, Tuple
-
-import pdfplumber
-from docling.document_converter import convert_pdf_to_markdown
-from docling.document_converter import DocumentConverter
 
 # Add the project root to Python path to import finagent modules
 import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
+from pathlib import Path
+from typing import Any
+
+from docling.document_converter import DocumentConverter
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
 from finagent.extractors.geometric import extract as pdfplumber_extract
-from finagent.schema import metrics_for_statement
 
 
-def extract_with_pdfplumber(pdf_path: str, page_indices: List[int] = None) -> List[Dict[str, Any]]:
+def extract_with_pdfplumber(pdf_path: str, page_indices: list[int] | None = None) -> list[dict[str, Any]]:
     """
     Extract tables using the current pdfplumber approach.
     Returns list of RawItem objects.
@@ -38,15 +36,13 @@ def extract_with_pdfplumber(pdf_path: str, page_indices: List[int] = None) -> Li
     raw_items = pdfplumber_extract(pdf_path, page_indices)
 
     # Convert to benchmark format
-    return [{
-        "label": item.label,
-        "values": item.values,
-        "page": item.page,
-        "source": "pdfplumber"
-    } for item in raw_items]
+    return [
+        {"label": item.label, "values": item.values, "page": item.page, "source": "pdfplumber"}
+        for item in raw_items
+    ]
 
 
-def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
+def extract_with_docling(pdf_path: str) -> list[dict[str, Any]]:
     """
     Extract tables using Docling.
     Returns list of extracted items in the same format as pdfplumber.
@@ -79,12 +75,16 @@ def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
                         values.append(cell_text)
 
             if label:  # Only add if we have a label
-                extracted_items.append({
-                    "label": label,
-                    "values": values,
-                    "page": table.metadata.page_number if hasattr(table.metadata, 'page_number') else 0,
-                    "source": "docling"
-                })
+                extracted_items.append(
+                    {
+                        "label": label,
+                        "values": values,
+                        "page": table.metadata.page_number
+                        if hasattr(table.metadata, "page_number")
+                        else 0,
+                        "source": "docling",
+                    }
+                )
 
     # Process text blocks for headings and other content
     for block in doc.content:
@@ -92,12 +92,16 @@ def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
             # Check if this looks like a heading
             text = block.text.strip()
             if is_heading(text):
-                extracted_items.append({
-                    "label": text,
-                    "values": [],
-                    "page": block.metadata.page_number if hasattr(block.metadata, 'page_number') else 0,
-                    "source": "docling_heading"
-                })
+                extracted_items.append(
+                    {
+                        "label": text,
+                        "values": [],
+                        "page": block.metadata.page_number
+                        if hasattr(block.metadata, "page_number")
+                        else 0,
+                        "source": "docling_heading",
+                    }
+                )
 
     return extracted_items
 
@@ -105,29 +109,19 @@ def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
 def is_heading(text: str) -> bool:
     """Check if text looks like a heading."""
     # Simple heuristic: short text, title case, no numbers
-    if len(text.split()) <= 5 and text == text.title() and not re.search(r'\d', text):
-        return True
-    return False
+    return len(text.split()) <= 5 and text == text.title() and not re.search(r"\d", text)
 
 
-def compare_extractions(pdfplumber_items: List[Dict], docling_items: List[Dict]) -> Dict[str, Any]:
+def compare_extractions(pdfplumber_items: list[dict], docling_items: list[dict]) -> dict[str, Any]:
     """
     Compare the two extraction approaches.
     Returns comparison metrics.
     """
     metrics = {
-        "table_rows": {
-            "pdfplumber": 0,
-            "docling": 0,
-            "matching": 0
-        },
-        "headings": {
-            "pdfplumber": 0,
-            "docling": 0,
-            "matching": 0
-        },
+        "table_rows": {"pdfplumber": 0, "docling": 0, "matching": 0},
+        "headings": {"pdfplumber": 0, "docling": 0, "matching": 0},
         "value_accuracy": 0.0,
-        "label_accuracy": 0.0
+        "label_accuracy": 0.0,
     }
 
     # Count table rows
@@ -151,7 +145,9 @@ def compare_extractions(pdfplumber_items: List[Dict], docling_items: List[Dict])
 
     # Count headings
     pdfplumber_headings = [item for item in pdfplumber_items if not item["values"]]
-    docling_headings = [item for item in docling_items if not item["values"] and item["source"] == "docling_heading"]
+    docling_headings = [
+        item for item in docling_items if not item["values"] and item["source"] == "docling_heading"
+    ]
 
     metrics["headings"]["pdfplumber"] = len(pdfplumber_headings)
     metrics["headings"]["docling"] = len(docling_headings)
@@ -175,7 +171,7 @@ def compare_extractions(pdfplumber_items: List[Dict], docling_items: List[Dict])
     return metrics
 
 
-def benchmark_pdf(pdf_path: str) -> Dict[str, Any]:
+def benchmark_pdf(pdf_path: str) -> dict[str, Any]:
     """Run benchmark on a single PDF."""
     print(f"Benchmarking {Path(pdf_path).name}...")
 
@@ -190,13 +186,13 @@ def benchmark_pdf(pdf_path: str) -> Dict[str, Any]:
         "pdf": Path(pdf_path).name,
         "pdfplumber": {
             "table_rows": len([item for item in pdfplumber_items if item["values"]]),
-            "headings": len([item for item in pdfplumber_items if not item["values"]])
+            "headings": len([item for item in pdfplumber_items if not item["values"]]),
         },
         "docling": {
             "table_rows": len([item for item in docling_items if item["values"]]),
-            "headings": len([item for item in docling_items if not item["values"]])
+            "headings": len([item for item in docling_items if not item["values"]]),
         },
-        "comparison": comparison
+        "comparison": comparison,
     }
 
 
@@ -208,7 +204,7 @@ def main():
     pdf_files = [
         test_pdfs_dir / "Airtel_2024-25.pdf",
         test_pdfs_dir / "TCS_2024-2025.pdf",
-        test_pdfs_dir / "Newgen.pdf"
+        test_pdfs_dir / "Newgen.pdf",
     ]
 
     results = []
@@ -224,10 +220,18 @@ def main():
     print("\n=== Benchmark Results ===")
     for result in results:
         print(f"\nPDF: {result['pdf']}")
-        print(f"pdfplumber: {result['pdfplumber']['table_rows']} table rows, {result['pdfplumber']['headings']} headings")
-        print(f"docling: {result['docling']['table_rows']} table rows, {result['docling']['headings']} headings")
-        print(f"Matching table rows: {result['comparison']['table_rows']['matching']} ({result['comparison']['value_accuracy']:.1%})")
-        print(f"Matching headings: {result['comparison']['headings']['matching']} ({result['comparison']['label_accuracy']:.1%})")
+        print(
+            f"pdfplumber: {result['pdfplumber']['table_rows']} table rows, {result['pdfplumber']['headings']} headings"
+        )
+        print(
+            f"docling: {result['docling']['table_rows']} table rows, {result['docling']['headings']} headings"
+        )
+        print(
+            f"Matching table rows: {result['comparison']['table_rows']['matching']} ({result['comparison']['value_accuracy']:.1%})"
+        )
+        print(
+            f"Matching headings: {result['comparison']['headings']['matching']} ({result['comparison']['label_accuracy']:.1%})"
+        )
 
     # Save results to JSON
     with open("benchmark_results.json", "w") as f:

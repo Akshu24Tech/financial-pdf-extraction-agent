@@ -5,14 +5,14 @@ This script extracts the first page from each PDF and shows sample output
 from both approaches for qualitative comparison.
 """
 
-import json
 import re
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
 
 # Try to import both libraries
 try:
     from docling.document_converter import DocumentConverter
+
     DOCLING_AVAILABLE = True
 except ImportError:
     DOCLING_AVAILABLE = False
@@ -20,13 +20,14 @@ except ImportError:
 
 try:
     import pdfplumber
+
     PDFPLUMBER_AVAILABLE = True
 except ImportError:
     PDFPLUMBER_AVAILABLE = False
     print("pdfplumber not available - will only show Docling output")
 
 
-def extract_with_pdfplumber(pdf_path: str, page_num: int = 0) -> List[Dict[str, Any]]:
+def extract_with_pdfplumber(pdf_path: str, page_num: int = 0) -> list[dict[str, Any]]:
     """Extract text and tables using pdfplumber."""
     extracted_items = []
 
@@ -36,25 +37,24 @@ def extract_with_pdfplumber(pdf_path: str, page_num: int = 0) -> List[Dict[str, 
             text = page.extract_text()
 
             if text:
-                lines = text.split('\n')
+                lines = text.split("\n")
                 for line in lines:
                     line = line.strip()
                     if line:
                         # Simple heuristic for table rows
-                        if re.search(r'\d', line) and len(line.split()) > 3:
-                            parts = re.split(r'\s{2,}', line)
+                        if re.search(r"\d", line) and len(line.split()) > 3:
+                            parts = re.split(r"\s{2,}", line)
                             if len(parts) >= 2:
-                                extracted_items.append({
-                                    "type": "table_row",
-                                    "content": line,
-                                    "label": parts[0].strip(),
-                                    "values": [p.strip() for p in parts[1:] if p.strip()]
-                                })
+                                extracted_items.append(
+                                    {
+                                        "type": "table_row",
+                                        "content": line,
+                                        "label": parts[0].strip(),
+                                        "values": [p.strip() for p in parts[1:] if p.strip()],
+                                    }
+                                )
                         else:
-                            extracted_items.append({
-                                "type": "text",
-                                "content": line
-                            })
+                            extracted_items.append({"type": "text", "content": line})
 
             # Extract tables
             tables = page.extract_tables()
@@ -64,17 +64,19 @@ def extract_with_pdfplumber(pdf_path: str, page_num: int = 0) -> List[Dict[str, 
                         label = row[0].strip() if row[0] else ""
                         values = [cell.strip() for cell in row[1:] if cell and cell.strip()]
                         if label:
-                            extracted_items.append({
-                                "type": "table",
-                                "content": " | ".join([label] + values),
-                                "label": label,
-                                "values": values
-                            })
+                            extracted_items.append(
+                                {
+                                    "type": "table",
+                                    "content": " | ".join([label] + values),
+                                    "label": label,
+                                    "values": values,
+                                }
+                            )
 
     return extracted_items
 
 
-def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
+def extract_with_docling(pdf_path: str) -> list[dict[str, Any]]:
     """Extract content using Docling."""
     converter = DocumentConverter()
     doc = converter.convert(pdf_path)
@@ -100,21 +102,20 @@ def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
                         values.append(cell_text)
 
             if label:
-                extracted_items.append({
-                    "type": "table",
-                    "content": " | ".join([label] + values),
-                    "label": label,
-                    "values": values
-                })
+                extracted_items.append(
+                    {
+                        "type": "table",
+                        "content": " | ".join([label] + values),
+                        "label": label,
+                        "values": values,
+                    }
+                )
 
     # Process text blocks
     for block in doc.content:
         if block.type == "text" and block.text and block.text.strip():
             text = block.text.strip()
-            extracted_items.append({
-                "type": "text",
-                "content": text
-            })
+            extracted_items.append({"type": "text", "content": text})
 
     return extracted_items
 
@@ -127,7 +128,7 @@ def main():
     pdf_files = [
         test_pdfs_dir / "Airtel_2024-25.pdf",
         test_pdfs_dir / "TCS_2024-2025.pdf",
-        test_pdfs_dir / "Newgen.pdf"
+        test_pdfs_dir / "Newgen.pdf",
     ]
 
     for pdf_file in pdf_files:
@@ -135,16 +136,18 @@ def main():
             print(f"PDF not found: {pdf_file}")
             continue
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"PDF: {pdf_file.name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Extract with pdfplumber if available
         if PDFPLUMBER_AVAILABLE:
             print("\n--- pdfplumber output ---")
             try:
                 pdfplumber_items = extract_with_pdfplumber(str(pdf_file), 0)
-                table_rows = [item for item in pdfplumber_items if item["type"] in ["table_row", "table"]]
+                table_rows = [
+                    item for item in pdfplumber_items if item["type"] in ["table_row", "table"]
+                ]
                 text_items = [item for item in pdfplumber_items if item["type"] == "text"]
 
                 print(f"Found {len(table_rows)} table rows, {len(text_items)} text items")
@@ -159,7 +162,7 @@ def main():
                 for item in text_items[:3]:
                     print(f"  {item['content']}")
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Error with pdfplumber: {e}")
 
         # Extract with Docling if available
@@ -182,7 +185,7 @@ def main():
                 for item in text_items[:3]:
                     print(f"  {item['content']}")
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Error with Docling: {e}")
 
 

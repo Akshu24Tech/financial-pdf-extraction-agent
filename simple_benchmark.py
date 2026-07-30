@@ -7,13 +7,13 @@ This script compares the raw output from both approaches on Airtel, TCS, and New
 import json
 import re
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
 
 import pdfplumber
 from docling.document_converter import DocumentConverter
 
 
-def extract_with_pdfplumber(pdf_path: str, page_num: int = 0) -> List[Dict[str, Any]]:
+def extract_with_pdfplumber(pdf_path: str, page_num: int = 0) -> list[dict[str, Any]]:
     """
     Extract text and tables using pdfplumber.
     """
@@ -27,38 +27,44 @@ def extract_with_pdfplumber(pdf_path: str, page_num: int = 0) -> List[Dict[str, 
             text = page.extract_text()
             if text:
                 # Split into lines and look for potential table rows
-                lines = text.split('\n')
+                lines = text.split("\n")
                 for line in lines:
                     line = line.strip()
                     if line:
                         # Simple heuristic: if line contains numbers, it might be a table row
-                        if re.search(r'\d', line):
+                        if re.search(r"\d", line):
                             # Split into label and values
-                            parts = re.split(r'\s{2,}', line)  # Split on 2+ spaces
+                            parts = re.split(r"\s{2,}", line)  # Split on 2+ spaces
                             if len(parts) >= 2:
                                 label = parts[0].strip()
                                 values = [p.strip() for p in parts[1:] if p.strip()]
-                                extracted_items.append({
-                                    "label": label,
-                                    "values": values,
-                                    "page": page_num + 1,
-                                    "source": "pdfplumber_table"
-                                })
+                                extracted_items.append(
+                                    {
+                                        "label": label,
+                                        "values": values,
+                                        "page": page_num + 1,
+                                        "source": "pdfplumber_table",
+                                    }
+                                )
                             else:
-                                extracted_items.append({
+                                extracted_items.append(
+                                    {
+                                        "label": line,
+                                        "values": [],
+                                        "page": page_num + 1,
+                                        "source": "pdfplumber_text",
+                                    }
+                                )
+                        else:
+                            # Potential heading
+                            extracted_items.append(
+                                {
                                     "label": line,
                                     "values": [],
                                     "page": page_num + 1,
-                                    "source": "pdfplumber_text"
-                                })
-                        else:
-                            # Potential heading
-                            extracted_items.append({
-                                "label": line,
-                                "values": [],
-                                "page": page_num + 1,
-                                "source": "pdfplumber_heading"
-                            })
+                                    "source": "pdfplumber_heading",
+                                }
+                            )
 
             # Extract tables
             tables = page.extract_tables()
@@ -68,17 +74,19 @@ def extract_with_pdfplumber(pdf_path: str, page_num: int = 0) -> List[Dict[str, 
                         label = row[0].strip() if row[0] else ""
                         values = [cell.strip() for cell in row[1:] if cell and cell.strip()]
                         if label:
-                            extracted_items.append({
-                                "label": label,
-                                "values": values,
-                                "page": page_num + 1,
-                                "source": "pdfplumber_table"
-                            })
+                            extracted_items.append(
+                                {
+                                    "label": label,
+                                    "values": values,
+                                    "page": page_num + 1,
+                                    "source": "pdfplumber_table",
+                                }
+                            )
 
     return extracted_items
 
 
-def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
+def extract_with_docling(pdf_path: str) -> list[dict[str, Any]]:
     """
     Extract content using Docling.
     """
@@ -110,12 +118,16 @@ def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
                         values.append(cell_text)
 
             if label:  # Only add if we have a label
-                extracted_items.append({
-                    "label": label,
-                    "values": values,
-                    "page": table.metadata.page_number if hasattr(table.metadata, 'page_number') else 0,
-                    "source": "docling_table"
-                })
+                extracted_items.append(
+                    {
+                        "label": label,
+                        "values": values,
+                        "page": table.metadata.page_number
+                        if hasattr(table.metadata, "page_number")
+                        else 0,
+                        "source": "docling_table",
+                    }
+                )
 
     # Process text blocks for headings and other content
     for block in doc.content:
@@ -123,19 +135,27 @@ def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
             text = block.text.strip()
             # Check if this looks like a heading
             if is_heading(text):
-                extracted_items.append({
-                    "label": text,
-                    "values": [],
-                    "page": block.metadata.page_number if hasattr(block.metadata, 'page_number') else 0,
-                    "source": "docling_heading"
-                })
-            elif re.search(r'\d', text):  # Contains numbers - potential table row
-                extracted_items.append({
-                    "label": text,
-                    "values": [],
-                    "page": block.metadata.page_number if hasattr(block.metadata, 'page_number') else 0,
-                    "source": "docling_text"
-                })
+                extracted_items.append(
+                    {
+                        "label": text,
+                        "values": [],
+                        "page": block.metadata.page_number
+                        if hasattr(block.metadata, "page_number")
+                        else 0,
+                        "source": "docling_heading",
+                    }
+                )
+            elif re.search(r"\d", text):  # Contains numbers - potential table row
+                extracted_items.append(
+                    {
+                        "label": text,
+                        "values": [],
+                        "page": block.metadata.page_number
+                        if hasattr(block.metadata, "page_number")
+                        else 0,
+                        "source": "docling_text",
+                    }
+                )
 
     return extracted_items
 
@@ -143,28 +163,18 @@ def extract_with_docling(pdf_path: str) -> List[Dict[str, Any]]:
 def is_heading(text: str) -> bool:
     """Check if text looks like a heading."""
     # Simple heuristic: short text, title case, no numbers
-    if len(text.split()) <= 5 and text == text.title() and not re.search(r'\d', text):
-        return True
-    return False
+    return len(text.split()) <= 5 and text == text.title() and not re.search(r"\d", text)
 
 
-def compare_extractions(pdfplumber_items: List[Dict], docling_items: List[Dict]) -> Dict[str, Any]:
+def compare_extractions(pdfplumber_items: list[dict], docling_items: list[dict]) -> dict[str, Any]:
     """
     Compare the two extraction approaches.
     """
     metrics = {
-        "table_rows": {
-            "pdfplumber": 0,
-            "docling": 0,
-            "matching": 0
-        },
-        "headings": {
-            "pdfplumber": 0,
-            "docling": 0,
-            "matching": 0
-        },
+        "table_rows": {"pdfplumber": 0, "docling": 0, "matching": 0},
+        "headings": {"pdfplumber": 0, "docling": 0, "matching": 0},
         "value_accuracy": 0.0,
-        "label_accuracy": 0.0
+        "label_accuracy": 0.0,
     }
 
     # Count table rows
@@ -187,7 +197,9 @@ def compare_extractions(pdfplumber_items: List[Dict], docling_items: List[Dict])
                     break
 
     # Count headings
-    pdfplumber_headings = [item for item in pdfplumber_items if item["source"] == "pdfplumber_heading"]
+    pdfplumber_headings = [
+        item for item in pdfplumber_items if item["source"] == "pdfplumber_heading"
+    ]
     docling_headings = [item for item in docling_items if item["source"] == "docling_heading"]
 
     metrics["headings"]["pdfplumber"] = len(pdfplumber_headings)
@@ -212,7 +224,7 @@ def compare_extractions(pdfplumber_items: List[Dict], docling_items: List[Dict])
     return metrics
 
 
-def benchmark_pdf(pdf_path: str) -> Dict[str, Any]:
+def benchmark_pdf(pdf_path: str) -> dict[str, Any]:
     """Run benchmark on a single PDF."""
     print(f"Benchmarking {Path(pdf_path).name}...")
 
@@ -226,16 +238,26 @@ def benchmark_pdf(pdf_path: str) -> Dict[str, Any]:
     return {
         "pdf": Path(pdf_path).name,
         "pdfplumber": {
-            "table_rows": len([item for item in pdfplumber_items if item["source"].endswith("_table")]),
-            "headings": len([item for item in pdfplumber_items if item["source"] == "pdfplumber_heading"]),
-            "text_items": len([item for item in pdfplumber_items if item["source"] == "pdfplumber_text"])
+            "table_rows": len(
+                [item for item in pdfplumber_items if item["source"].endswith("_table")]
+            ),
+            "headings": len(
+                [item for item in pdfplumber_items if item["source"] == "pdfplumber_heading"]
+            ),
+            "text_items": len(
+                [item for item in pdfplumber_items if item["source"] == "pdfplumber_text"]
+            ),
         },
         "docling": {
-            "table_rows": len([item for item in docling_items if item["source"].endswith("_table")]),
-            "headings": len([item for item in docling_items if item["source"] == "docling_heading"]),
-            "text_items": len([item for item in docling_items if item["source"] == "docling_text"])
+            "table_rows": len(
+                [item for item in docling_items if item["source"].endswith("_table")]
+            ),
+            "headings": len(
+                [item for item in docling_items if item["source"] == "docling_heading"]
+            ),
+            "text_items": len([item for item in docling_items if item["source"] == "docling_text"]),
         },
-        "comparison": comparison
+        "comparison": comparison,
     }
 
 
@@ -247,7 +269,7 @@ def main():
     pdf_files = [
         test_pdfs_dir / "Airtel_2024-25.pdf",
         test_pdfs_dir / "TCS_2024-2025.pdf",
-        test_pdfs_dir / "Newgen.pdf"
+        test_pdfs_dir / "Newgen.pdf",
     ]
 
     results = []
@@ -263,10 +285,18 @@ def main():
     print("\n=== Benchmark Results ===")
     for result in results:
         print(f"\nPDF: {result['pdf']}")
-        print(f"pdfplumber: {result['pdfplumber']['table_rows']} table rows, {result['pdfplumber']['headings']} headings")
-        print(f"docling: {result['docling']['table_rows']} table rows, {result['docling']['headings']} headings")
-        print(f"Matching table rows: {result['comparison']['table_rows']['matching']} ({result['comparison']['value_accuracy']:.1%})")
-        print(f"Matching headings: {result['comparison']['headings']['matching']} ({result['comparison']['label_accuracy']:.1%})")
+        print(
+            f"pdfplumber: {result['pdfplumber']['table_rows']} table rows, {result['pdfplumber']['headings']} headings"
+        )
+        print(
+            f"docling: {result['docling']['table_rows']} table rows, {result['docling']['headings']} headings"
+        )
+        print(
+            f"Matching table rows: {result['comparison']['table_rows']['matching']} ({result['comparison']['value_accuracy']:.1%})"
+        )
+        print(
+            f"Matching headings: {result['comparison']['headings']['matching']} ({result['comparison']['label_accuracy']:.1%})"
+        )
 
     # Save results to JSON
     with open("benchmark_results.json", "w") as f:
@@ -279,11 +309,19 @@ def main():
     for result in results:
         print(f"\nPDF: {result['pdf']}")
         print("\npdfplumber sample output:")
-        for item in [i for i in extract_with_pdfplumber(str(test_pdfs_dir / result['pdf']), 0) if i['source'].endswith('_table')][:3]:
+        for item in [
+            i
+            for i in extract_with_pdfplumber(str(test_pdfs_dir / result["pdf"]), 0)
+            if i["source"].endswith("_table")
+        ][:3]:
             print(f"  {item['label']}: {item['values']}")
 
         print("\nDocling sample output:")
-        for item in [i for i in extract_with_docling(str(test_pdfs_dir / result['pdf'])) if i['source'].endswith('_table')][:3]:
+        for item in [
+            i
+            for i in extract_with_docling(str(test_pdfs_dir / result["pdf"]))
+            if i["source"].endswith("_table")
+        ][:3]:
             print(f"  {item['label']}: {item['values']}")
 
 

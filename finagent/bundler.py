@@ -3,6 +3,7 @@
 Generates the single-file distribution finagent_single.py from the modular finagent/ package.
 Supports --check flag for CI synchronization verification.
 """
+
 import argparse
 import sys
 from pathlib import Path
@@ -113,26 +114,34 @@ def bundle() -> str:
             continue
         content = path.read_text(encoding="utf-8")
         cleaned = clean_imports(content)
-        parts.append("# =============================================================================\n")
-        parts.append(f"# {section_name} (from finagent/{path.relative_to(PACKAGE_DIR).as_posix()})\n")
-        parts.append("# =============================================================================\n")
+        parts.append(
+            "# =============================================================================\n"
+        )
+        parts.append(
+            f"# {section_name} (from finagent/{path.relative_to(PACKAGE_DIR).as_posix()})\n"
+        )
+        parts.append(
+            "# =============================================================================\n"
+        )
 
         parts.append(cleaned)
 
-    parts.append('''
+    parts.append("""
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python finagent_single.py <pdf_path> [out_excel_path]")
         sys.exit(1)
     run(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)
-''')
+""")
 
     return "\n".join(parts)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Bundle finagent/ into finagent_single.py")
-    parser.add_argument("--check", action="store_true", help="Check if finagent_single.py is up-to-date")
+    parser.add_argument(
+        "--check", action="store_true", help="Check if finagent_single.py is up-to-date"
+    )
     args = parser.parse_args()
 
     content = bundle()
@@ -143,14 +152,17 @@ def main():
         existing = TARGET_FILE.read_text(encoding="utf-8").replace("\r\n", "\n")
         content_norm = content.replace("\r\n", "\n")
         if existing.strip() != content_norm.strip():
-            print("Error: finagent_single.py is out of sync with finagent/ package!", file=sys.stderr)
+            print(
+                "Error: finagent_single.py is out of sync with finagent/ package!", file=sys.stderr
+            )
             import difflib
+
             diff = difflib.unified_diff(
                 existing.strip().splitlines(),
                 content_norm.strip().splitlines(),
                 fromfile="existing (finagent_single.py)",
                 tofile="generated (bundler output)",
-                lineterm=""
+                lineterm="",
             )
             print("\n".join(list(diff)[:30]), file=sys.stderr)
             print("Run 'python -m finagent.bundler' to update it.", file=sys.stderr)
