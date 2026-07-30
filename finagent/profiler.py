@@ -3,6 +3,7 @@
 Uses pypdf (fast) for the full-document pass. pdfplumber is reserved for
 the few pages we actually extract from.
 """
+
 import re
 from dataclasses import dataclass, field
 
@@ -14,12 +15,12 @@ from . import geometry  # NEW: for geometry stage
 
 @dataclass
 class PageProfile:
-    index: int                # 0-based
+    index: int  # 0-based
     width: float
     height: float
     landscape: bool
-    text: str                 # raw extracted text (kept for the locator)
-    text_quality: str         # OK / SUSPECT / EMPTY
+    text: str  # raw extracted text (kept for the locator)
+    text_quality: str  # OK / SUSPECT / EMPTY
 
 
 @dataclass
@@ -37,8 +38,11 @@ class DocProfile:
         q = {}
         for p in self.pages:
             q[p.text_quality] = q.get(p.text_quality, 0) + 1
-        return {"pages": self.n_pages, "landscape_ratio": round(self.landscape_ratio, 2),
-                "text_quality": q}
+        return {
+            "pages": self.n_pages,
+            "landscape_ratio": round(self.landscape_ratio, 2),
+            "text_quality": q,
+        }
 
 
 def _quality(text):
@@ -62,10 +66,16 @@ def profile(pdf_path):
                 text = page.extract_text() or ""
             except Exception:  # noqa: BLE001
                 text = ""
-            doc.pages.append(PageProfile(
-                index=i, width=w, height=h, landscape=w > h,
-                text=text, text_quality=_quality(text),
-            ))
+            doc.pages.append(
+                PageProfile(
+                    index=i,
+                    width=w,
+                    height=h,
+                    landscape=w > h,
+                    text=text,
+                    text_quality=_quality(text),
+                )
+            )
 
             # --- GEOMETRY STAGE: Split physical page into logical pages ---
             pdfplumber_page = pdf.pages[i]
@@ -77,16 +87,19 @@ def profile(pdf_path):
             for group in logical:
                 # Extract text from the logical page (for scoring)
                 logical_text = " ".join(w["text"] for w in group)
-                doc.logical_pages.append({
-                    "physical_page": i,
-                    "text": logical_text,
-                    "text_quality": _quality(logical_text),
-                })
+                doc.logical_pages.append(
+                    {
+                        "physical_page": i,
+                        "text": logical_text,
+                        "text_quality": _quality(logical_text),
+                    }
+                )
     return doc
 
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print("Usage: python -m finagent.profiler <pdf_path>")
         sys.exit(1)
@@ -95,4 +108,3 @@ if __name__ == "__main__":
     print(f"Total Pages: {d.n_pages}")
     print(f"Landscape Ratio: {d.landscape_ratio:.2f}")
     print(f"Summary: {d.summary()}")
-

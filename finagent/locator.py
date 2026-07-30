@@ -4,6 +4,7 @@ Keyword scoring over the profiler's per-page text. For each statement type
 we want the CONSOLIDATED version; fall back to standalone if the document
 has no consolidated statements (or doesn't say).
 """
+
 import re
 from dataclasses import dataclass
 
@@ -27,21 +28,40 @@ STATEMENT_SIGNATURES = {
         # second row: bank wording (Banking Regulation Act Schedule III) —
         # banks print Capital and Liabilities / Deposits / Advances with no
         # current/non-current split, so corporate cues never fire
-        [r"total assets", r"equity and liabilities", r"total equity",
-         r"non[- ]current assets", r"current liabilities",
-         r"capital and liabilities", r"reserves and surplus",
-         r"\bdeposits\b", r"\badvances\b", r"\bborrowings\b"],
+        [
+            r"total assets",
+            r"equity and liabilities",
+            r"total equity",
+            r"non[- ]current assets",
+            r"current liabilities",
+            r"capital and liabilities",
+            r"reserves and surplus",
+            r"\bdeposits\b",
+            r"\badvances\b",
+            r"\bborrowings\b",
+        ],
     ),
     "PL": (
         # "profit AND loss" is Indian GAAP wording; IFRS reports (Singapore,
         # EU) title the same statement "profit OR loss" / "comprehensive income"
-        [r"statement of profit (?:and|or) loss", r"income statement",
-         r"statement of (?:operations|income)", r"profit and loss account",
-         r"statement of comprehensive income"],
-        [r"revenue from operations", r"total income", r"profit before tax",
-         r"earnings per (?:equity )?share", r"total expenses",
-         r"gross profit", r"cost of sales", r"profit for the year",
-         r"income tax expense"],
+        [
+            r"statement of profit (?:and|or) loss",
+            r"income statement",
+            r"statement of (?:operations|income)",
+            r"profit and loss account",
+            r"statement of comprehensive income",
+        ],
+        [
+            r"revenue from operations",
+            r"total income",
+            r"profit before tax",
+            r"earnings per (?:equity )?share",
+            r"total expenses",
+            r"gross profit",
+            r"cost of sales",
+            r"profit for the year",
+            r"income tax expense",
+        ],
     ),
     "CF": (
         [r"(?:statement of )?cash flows?", r"cash flow statement"],
@@ -52,9 +72,9 @@ STATEMENT_SIGNATURES = {
 
 @dataclass
 class Location:
-    statement: str       # BS / PL / CF
-    basis: str           # consolidated / standalone / unknown
-    page_indices: list   # 0-based, best first
+    statement: str  # BS / PL / CF
+    basis: str  # consolidated / standalone / unknown
+    page_indices: list  # 0-based, best first
     score: float
 
 
@@ -62,8 +82,7 @@ def _search(pat, text):
     """re.search with a kerning-tolerant fallback: PDF text layers sometimes
     split a word internally ("BAL ANCE SHEET"), so retry with the pattern's
     literal spaces removed against space-collapsed text."""
-    return (re.search(pat, text)
-            or re.search(pat.replace(" ", ""), text.replace(" ", "")))
+    return re.search(pat, text) or re.search(pat.replace(" ", ""), text.replace(" ", ""))
 
 
 def _is_heading(line, title_pats):
@@ -74,7 +93,7 @@ def _is_heading(line, title_pats):
     for p in title_pats:
         m = re.search(p, line)
         if m:
-            if len(line[:m.start()].split()) <= 2:
+            if len(line[: m.start()].split()) <= 2:
                 return True
         elif re.search(p.replace(" ", ""), line.replace(" ", "")):
             return True
@@ -98,7 +117,7 @@ def verify_page(pdf_path: str, page_num: int, cue_pats: list) -> bool:
 
         # (B) Column check: >= 2 distinct x-aligned numeric columns
         words = page.extract_words()
-        x_coords = [w['x0'] for w in words if w['text'].replace('.', '').isdigit()]
+        x_coords = [w["x0"] for w in words if w["text"].replace(".", "").isdigit()]
         distinct_columns = len({round(x / 50) * 50 for x in x_coords})  # 50px tolerance
         if distinct_columns < 2:
             return False
@@ -136,12 +155,10 @@ def _score_page(text, title_pats, cue_pats):
     # a fake heading, takes the +5 boost and a basis stamp, and outranks the
     # real statement. Length alone fails (dated titles run to ~10 words);
     # position is the discriminator: phrase must start within the first 2 words.
-    title_line = next((ln for ln in head_lines
-                       if _is_heading(ln, title_pats)), None)
+    title_line = next((ln for ln in head_lines if _is_heading(ln, title_pats)), None)
     # "Condensed/Summarised X" headings are management-report summaries,
     # not the statement itself — no heading boost, no basis authority
-    if title_line and re.search(r"condensed|summaris|summariz|abridged",
-                                title_line):
+    if title_line and re.search(r"condensed|summaris|summariz|abridged", title_line):
         title_line = None
     # real statements show two comparative periods (IAS 1); a page parading
     # many distinct years is a ten-year/multi-year overview. Heading-titled
@@ -179,8 +196,9 @@ def _scored_pages(doc_profile, title_pats, cue_pats):
     return scored
 
 
-def _pick(scored, doc_profile, cue_pats, code, want_basis=None,
-          prefer_consolidated=False, exclude=()):
+def _pick(
+    scored, doc_profile, cue_pats, code, want_basis=None, prefer_consolidated=False, exclude=()
+):
     """Choose the best statement page (+ its continuations) from `scored`.
 
     want_basis: if given, restrict to pages stamped that basis (used to find
@@ -230,7 +248,8 @@ def _pick(scored, doc_profile, cue_pats, code, want_basis=None,
         if 0 <= nb < len(doc_profile.logical_pages):
             neighbour = doc_profile.logical_pages[nb]
             if neighbour["physical_page"] == physical_page and _is_continuation(
-                    neighbour["text"], cue_pats):
+                neighbour["text"], cue_pats
+            ):
                 pages.append(physical_page)  # Continuation on same physical page
     return Location(code, basis, sorted(set(pages)), score)
 
@@ -259,16 +278,19 @@ def locate_alternate(doc_profile, primary):
     for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
         prim = primary.get(code)
         prim_basis = prim.basis if prim else "unknown"
-        want = ("standalone" if prim_basis == "consolidated"
-                else "consolidated" if prim_basis == "standalone"
-                else None)   # primary basis unknown -> no distinct counterpart
+        want = (
+            "standalone"
+            if prim_basis == "consolidated"
+            else "consolidated"
+            if prim_basis == "standalone"
+            else None
+        )  # primary basis unknown -> no distinct counterpart
         if want is None:
             results[code] = Location(code, "none", [], 0)
             continue
         scored = _scored_pages(doc_profile, title_pats, cue_pats)
         exclude = set(prim.page_indices) if prim else set()
-        loc = _pick(scored, doc_profile, cue_pats, code,
-                    want_basis=want, exclude=exclude)
+        loc = _pick(scored, doc_profile, cue_pats, code, want_basis=want, exclude=exclude)
         results[code] = loc or Location(code, want, [], 0)
     return results
 

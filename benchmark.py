@@ -5,6 +5,7 @@ must move these numbers, or it didn't help.
 
     python benchmark.py
 """
+
 import time
 import traceback
 from pathlib import Path
@@ -20,17 +21,27 @@ for pdf in sorted(TEST_DIR.glob("*.pdf")):
     try:
         report = run(pdf, verbose=False)
         c = {s: len(report.by_status(s)) for s in Status}
-        results.append((pdf.name, c[Status.VERIFIED], c[Status.PROBABLE],
-                        c[Status.FLAGGED], c[Status.DERIVED],
-                        c[Status.MISSING], time.time() - t0))
+        results.append(
+            (
+                pdf.name,
+                c[Status.VERIFIED],
+                c[Status.PROBABLE],
+                c[Status.FLAGGED],
+                c[Status.DERIVED],
+                c[Status.MISSING],
+                time.time() - t0,
+            )
+        )
     except Exception:  # noqa: BLE001
         print(f"{pdf.name}: CRASHED")
         traceback.print_exc()
         results.append((pdf.name, 0, 0, 0, 0, len(Status), time.time() - t0))
 
 print()
-print(f"{'PDF':<22} {'VERIFIED':>9} {'PROBABLE':>9} {'FLAGGED':>8} "
-      f"{'DERIVED':>8} {'MISSING':>8} {'time':>7}")
+print(
+    f"{'PDF':<22} {'VERIFIED':>9} {'PROBABLE':>9} {'FLAGGED':>8} "
+    f"{'DERIVED':>8} {'MISSING':>8} {'time':>7}"
+)
 print("-" * 77)
 tot = [0, 0, 0, 0, 0]
 for name, ver, prob, flag, der, miss, secs in results:

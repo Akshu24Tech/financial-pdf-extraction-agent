@@ -6,6 +6,7 @@ Usage:
     finagent golden [filter]
     finagent build-single [--check]
 """
+
 import argparse
 import sys
 from pathlib import Path
@@ -16,7 +17,7 @@ from .pipeline import run as run_pipeline
 def main():
     parser = argparse.ArgumentParser(
         prog="finagent",
-        description="Financial PDF Extraction Agent — Accurate extraction through verification."
+        description="Financial PDF Extraction Agent — Accurate extraction through verification.",
     )
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 
@@ -30,11 +31,17 @@ def main():
 
     # Subcommand: golden
     golden_parser = subparsers.add_parser("golden", help="Run golden ground-truth check suite")
-    golden_parser.add_argument("filter", nargs="?", default="", help="Optional substring to filter PDFs")
+    golden_parser.add_argument(
+        "filter", nargs="?", default="", help="Optional substring to filter PDFs"
+    )
 
     # Subcommand: build-single
-    build_parser = subparsers.add_parser("build-single", help="Bundle package into finagent_single.py")
-    build_parser.add_argument("--check", action="store_true", help="Check if finagent_single.py is up-to-date")
+    build_parser = subparsers.add_parser(
+        "build-single", help="Bundle package into finagent_single.py"
+    )
+    build_parser.add_argument(
+        "--check", action="store_true", help="Check if finagent_single.py is up-to-date"
+    )
 
     args = parser.parse_args()
 
@@ -47,19 +54,21 @@ def main():
             parser.print_help()
     elif args.command == "benchmark":
         import benchmark
+
         _ = benchmark
 
         # benchmark script automatically executes
     elif args.command == "golden":
         import golden_check
+
         if args.filter:
             sys.argv = [sys.argv[0], args.filter]
         golden_check.main()
     elif args.command == "build-single":
         from . import bundler
+
         sys.argv = [sys.argv[0]] + (["--check"] if args.check else [])
         bundler.main()
-
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 - drop note-reference columns ("Revenue from operations  24  1,49,982 ...")
 - fuzzy-match label text to the canonical schema
 """
+
 import re
 from dataclasses import dataclass
 
@@ -97,29 +98,33 @@ def _looks_like_page_ref(tok, nxt):
 # non-current section comes first.
 # bare "(net)" is NOT a qualifier here: stripping it turned "Current tax
 # liabilities (net)" into a 92-score match for total current liabilities
-_QUALIFIER = (r"(?:loss(?:es)?|decrease|used in|in rupees|rs\.?|"
-              r"net of [^)]*|refer[^)]*|notes?\s*[\d., ]*|continued|"
-              r"face value[^)]*|"          # (Face Value of Rs 10 each)
-              r"[a-z](?:\s*\+\s*[a-z])*)")  # cross-refs: (a), (a+b+c)
+_QUALIFIER = (
+    r"(?:loss(?:es)?|decrease|used in|in rupees|rs\.?|"
+    r"net of [^)]*|refer[^)]*|notes?\s*[\d., ]*|continued|"
+    r"face value[^)]*|"  # (Face Value of Rs 10 each)
+    r"[a-z](?:\s*\+\s*[a-z])*)"
+)  # cross-refs: (a), (a+b+c)
 
 
 def clean_label(label):
     t = label.lower()
     t = re.sub(rf"/\s*\(?{_QUALIFIER}\)?(?=[\s)]|$)", " ", t)  # /(loss), /loss
-    t = re.sub(rf"\(\s*{_QUALIFIER}\s*\)", " ", t)             # (used in)
-    t = re.sub(r"^[\divxlc]+[.)]\s*", "", t)          # leading numbering: 1. / (iv)
+    t = re.sub(rf"\(\s*{_QUALIFIER}\s*\)", " ", t)  # (used in)
+    t = re.sub(r"^[\divxlc]+[.)]\s*", "", t)  # leading numbering: 1. / (iv)
     # fully-parenthesized enumerators: "(ii) Trade Receivables", "(a) …"
     t = re.sub(r"^\((?:[ivxlc]{1,4}|[a-z]|\d{1,2})\)\s*", "", t)
     # a LEADING basis word is page-level info the locator already resolved
     # ("Consolidated Net Profit for the year..."), not label identity
     t = re.sub(r"^(?:consolidated|standalone)\s+", "", t)
-    t = re.sub(r"[^a-z()/'& -]", " ", t)              # drop stray digits/symbols
+    t = re.sub(r"[^a-z()/'& -]", " ", t)  # drop stray digits/symbols
     return re.sub(r"\s+", " ", t).strip()
 
 
 def _cleaned_synonyms():
-    return {metric: sorted({clean_label(s) for s in spec["synonyms"]})
-            for metric, spec in METRICS.items()}
+    return {
+        metric: sorted({clean_label(s) for s in spec["synonyms"]})
+        for metric, spec in METRICS.items()
+    }
 
 
 CLEANED_SYNONYMS = _cleaned_synonyms()
@@ -145,8 +150,11 @@ def match_label(label):
         # minority interest" scores 92 against the "... BEFORE minority
         # interest" synonym — a one-token swap the threshold can't separate
         lt, st = set(t.split()), set(best_syn.split())
-        if ({"before", "after"} & lt) and ({"before", "after"} & st) \
-                and ("before" in lt) != ("before" in st):
+        if (
+            ({"before", "after"} & lt)
+            and ({"before", "after"} & st)
+            and ("before" in lt) != ("before" in st)
+        ):
             return None, 0
         return best, best_score
     return None, 0
@@ -189,17 +197,21 @@ def normalize(raw_items, allowed_metrics=None):
             # second reference column: a Page cross-ref (Note + Page columns,
             # BHEL). Only after a note ref was stripped — the double-column
             # signature — so single-reference statements are untouched.
-            if note_stripped and len(toks) >= 2 and _looks_like_page_ref(
-                    toks[0], toks[1]):
+            if note_stripped and len(toks) >= 2 and _looks_like_page_ref(toks[0], toks[1]):
                 toks = toks[1:]
             values = [parse_number(t) for t in toks]
             values = [v for v in values if v is not None]
             if not values:
                 continue
-            ext = Extraction(metric=metric, value=values[0],
-                             raw_label=item.label, page=item.page,
-                             source=item.source, score=score,
-                             extra_values=values[1:])
+            ext = Extraction(
+                metric=metric,
+                value=values[0],
+                raw_label=item.label,
+                page=item.page,
+                source=item.source,
+                score=score,
+                extra_values=values[1:],
+            )
             prev = by_metric.get(metric)
             if prev is None or score > prev.score:
                 by_metric[metric] = ext

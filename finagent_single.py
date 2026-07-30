@@ -48,9 +48,16 @@ METRICS = {
     "revenue": {
         "statement": "PL",
         # "interest earned" is the bank revenue line (Schedule III P&L)
-        "synonyms": ["revenue from operations", "net sales", "income from operations",
-                     "total revenues", "revenue", "sales", "turnover",
-                     "interest earned"],
+        "synonyms": [
+            "revenue from operations",
+            "net sales",
+            "income from operations",
+            "total revenues",
+            "revenue",
+            "sales",
+            "turnover",
+            "interest earned",
+        ],
     },
     "other_income": {
         "statement": "PL",
@@ -66,8 +73,12 @@ METRICS = {
     },
     "employee_costs": {
         "statement": "PL",
-        "synonyms": ["employee benefit expenses", "employee benefits expense",
-                     "staff costs", "personnel expenses"],
+        "synonyms": [
+            "employee benefit expenses",
+            "employee benefits expense",
+            "staff costs",
+            "personnel expenses",
+        ],
     },
     "depreciation": {
         "statement": "PL",
@@ -76,12 +87,15 @@ METRICS = {
         # as the first non-cash add-back in the CF reconciliation. The CF
         # wording ("depreciation of/on ...") is added so it is found there too.
         "also_on": ["CF"],
-        "synonyms": ["depreciation and amortisation expense", "depreciation and amortization",
-                     "depreciation, amortisation and impairment",
-                     "depreciation amortisation and depletion expense",
-                     "depreciation of plant and equipment",
-                     "depreciation on fixed assets",
-                     "depreciation and amortisation"],
+        "synonyms": [
+            "depreciation and amortisation expense",
+            "depreciation and amortization",
+            "depreciation, amortisation and impairment",
+            "depreciation amortisation and depletion expense",
+            "depreciation of plant and equipment",
+            "depreciation on fixed assets",
+            "depreciation and amortisation",
+        ],
     },
     "finance_costs": {
         "statement": "PL",
@@ -92,23 +106,39 @@ METRICS = {
     },
     "profit_before_tax": {
         "statement": "PL",
-        "synonyms": ["profit before tax", "profit before income tax", "income before income taxes",
-                     "profit/(loss) before tax", "earnings before tax"],
+        "synonyms": [
+            "profit before tax",
+            "profit before income tax",
+            "income before income taxes",
+            "profit/(loss) before tax",
+            "earnings before tax",
+        ],
     },
     "tax_expense": {
         "statement": "PL",
-        "synonyms": ["total tax expense", "tax expense", "income tax expense",
-                     "provision for taxation", "income taxes"],
+        "synonyms": [
+            "total tax expense",
+            "tax expense",
+            "income tax expense",
+            "provision for taxation",
+            "income taxes",
+        ],
     },
     "net_profit": {
         "statement": "PL",
         # bank P&L wording: the before-minority-interest line is the total
         # profit (incl. NCI), matching the "profit for the year" convention
-        "synonyms": ["profit for the year", "net profit", "profit after tax", "net income",
-                     "profit/(loss) for the year", "profit for the period",
-                     "net profit/loss",
-                     "net profit for the year before minority interest",
-                     "profit after tax for the year"],
+        "synonyms": [
+            "profit for the year",
+            "net profit",
+            "profit after tax",
+            "net income",
+            "profit/(loss) for the year",
+            "profit for the period",
+            "net profit/loss",
+            "net profit for the year before minority interest",
+            "profit after tax for the year",
+        ],
     },
     "total_comprehensive_income": {
         "statement": "PL",
@@ -116,18 +146,22 @@ METRICS = {
     },
     "eps_basic": {
         "statement": "PL",
-        "synonyms": ["basic earnings per share", "basic eps", "earnings per share basic",
-                     "basic (in rupees)", "basic (rs.)",
-                     "earnings per equity share basic",
-                     # combined line when basic == diluted (TCS); EU wording (BMW)
-                     "earnings per equity share basic and diluted",
-                     "basic earnings per ordinary share in eur",
-                     # power-sector wording (rate-regulated entities), as
-                     # truncated by the line wrap; the "before net movement"
-                     # twin is vetoed by the before/after directional guard
-                     "basic / diluted earnings per equity share after net movement"],
+        "synonyms": [
+            "basic earnings per share",
+            "basic eps",
+            "earnings per share basic",
+            "basic (in rupees)",
+            "basic (rs.)",
+            "earnings per equity share basic",
+            # combined line when basic == diluted (TCS); EU wording (BMW)
+            "earnings per equity share basic and diluted",
+            "basic earnings per ordinary share in eur",
+            # power-sector wording (rate-regulated entities), as
+            # truncated by the line wrap; the "before net movement"
+            # twin is vetoed by the before/after directional guard
+            "basic / diluted earnings per equity share after net movement",
+        ],
     },
-
     # ---------------- Balance Sheet ----------------
     "total_assets": {
         "statement": "BS",
@@ -135,8 +169,7 @@ METRICS = {
     },
     "non_current_assets": {
         "statement": "BS",
-        "synonyms": ["total non-current assets", "total non current assets",
-                     "non-current assets"],
+        "synonyms": ["total non-current assets", "total non current assets", "non-current assets"],
     },
     "current_assets": {
         "statement": "BS",
@@ -161,18 +194,25 @@ METRICS = {
     },
     "total_equity": {
         "statement": "BS",
-        "synonyms": ["total equity", "total shareholders' equity", "shareholders' funds",
-                     "equity attributable to owners", "equity"],
+        "synonyms": [
+            "total equity",
+            "total shareholders' equity",
+            "shareholders' funds",
+            "equity attributable to owners",
+            "equity",
+        ],
     },
     "non_current_liabilities": {
         "statement": "BS",
-        "synonyms": ["total non-current liabilities", "total non current liabilities",
-                     "non-current provisions and liabilities"],
+        "synonyms": [
+            "total non-current liabilities",
+            "total non current liabilities",
+            "non-current provisions and liabilities",
+        ],
     },
     "current_liabilities": {
         "statement": "BS",
-        "synonyms": ["total current liabilities",
-                     "current provisions and liabilities"],
+        "synonyms": ["total current liabilities", "current provisions and liabilities"],
     },
     "total_liabilities": {
         "statement": "BS",
@@ -181,80 +221,94 @@ METRICS = {
     "total_equity_and_liabilities": {
         "statement": "BS",
         # "capital and liabilities" is the bank BS section (Schedule III)
-        "synonyms": ["total equity and liabilities", "total liabilities and equity",
-                     "total liabilities and shareholders' equity",
-                     "total capital and liabilities"],
+        "synonyms": [
+            "total equity and liabilities",
+            "total liabilities and equity",
+            "total liabilities and shareholders' equity",
+            "total capital and liabilities",
+        ],
     },
-
     # ---------------- Cash Flow ----------------
     "cash_from_operations": {
         "statement": "CF",
         # NOTE: "cash generated from operations" is deliberately absent —
         # it's the PRE-TAX subtotal (golden check caught it on Reliance,
         # Adani and Newgen); only "net …" totals belong here
-        "synonyms": ["net cash generated from operating activities",
-                     "net cash from operating activities",
-                     "net cash flow from operating activities",
-                     "cash inflow/outflow from operating activities"],
+        "synonyms": [
+            "net cash generated from operating activities",
+            "net cash from operating activities",
+            "net cash flow from operating activities",
+            "cash inflow/outflow from operating activities",
+        ],
     },
     "cash_from_investing": {
         "statement": "CF",
-        "synonyms": ["net cash used in investing activities",
-                     "net cash from investing activities",
-                     "net cash flow from investing activities",
-                     "cash inflow/outflow from investing activities",
-                     "net cash flows generated from investing activities",
-                     "net cash generated from investing activities"],
+        "synonyms": [
+            "net cash used in investing activities",
+            "net cash from investing activities",
+            "net cash flow from investing activities",
+            "cash inflow/outflow from investing activities",
+            "net cash flows generated from investing activities",
+            "net cash generated from investing activities",
+        ],
     },
     "cash_from_financing": {
         "statement": "CF",
-        "synonyms": ["net cash used in financing activities",
-                     "net cash from financing activities",
-                     "net cash flow from financing activities",
-                     "cash inflow/outflow from financing activities",
-                     "net cash flows generated from financing activities",
-                     "net cash generated from financing activities"],
+        "synonyms": [
+            "net cash used in financing activities",
+            "net cash from financing activities",
+            "net cash flow from financing activities",
+            "cash inflow/outflow from financing activities",
+            "net cash flows generated from financing activities",
+            "net cash generated from financing activities",
+        ],
     },
     "net_change_in_cash": {
         "statement": "CF",
-        "synonyms": ["net increase/(decrease) in cash and cash equivalents",
-                     "net increase in cash and cash equivalents",
-                     "net change in cash and cash equivalents",
-                     "net decrease in cash and cash equivalents",
-                     "net increase in cash and cash equivalents during the year"],
+        "synonyms": [
+            "net increase/(decrease) in cash and cash equivalents",
+            "net increase in cash and cash equivalents",
+            "net change in cash and cash equivalents",
+            "net decrease in cash and cash equivalents",
+            "net increase in cash and cash equivalents during the year",
+        ],
     },
     "fx_effect_on_cash": {
         "statement": "CF",
-        "optional": True,   # only multinationals report it; feeds the
-                            # cash-flow identity, never counted as MISSING
-        "synonyms": ["effect of exchange rate on cash and cash equivalents",
-                     "effect of exchange rate changes on cash and cash equivalents",
-                     "effects of exchange rate changes on cash and cash equivalents",
-                     "exchange differences on cash and cash equivalents",
-                     "effect of exchange differences on cash and cash equivalents",
-                     "effect of fluctuation in foreign currency translation reserve",
-                     "exchange difference on translation of foreign currency cash and cash equivalents"],
+        "optional": True,  # only multinationals report it; feeds the
+        # cash-flow identity, never counted as MISSING
+        "synonyms": [
+            "effect of exchange rate on cash and cash equivalents",
+            "effect of exchange rate changes on cash and cash equivalents",
+            "effects of exchange rate changes on cash and cash equivalents",
+            "exchange differences on cash and cash equivalents",
+            "effect of exchange differences on cash and cash equivalents",
+            "effect of fluctuation in foreign currency translation reserve",
+            "exchange difference on translation of foreign currency cash and cash equivalents",
+        ],
     },
     "closing_cash": {
         "statement": "CF",
-        "synonyms": ["cash and cash equivalents at the end of the year",
-                     "cash and cash equivalents at end of the period",
-                     "closing cash and cash equivalents",
-                     "cash and cash equivalents as at the end of the year",
-                     "cash and cash equivalents as at december",
-                     "closing balance of cash and cash equivalents"],
+        "synonyms": [
+            "cash and cash equivalents at the end of the year",
+            "cash and cash equivalents at end of the period",
+            "closing cash and cash equivalents",
+            "cash and cash equivalents as at the end of the year",
+            "cash and cash equivalents as at december",
+            "closing balance of cash and cash equivalents",
+        ],
     },
 }
 
 ALL_METRICS = list(METRICS)
 EXPECTED_METRICS = [m for m, d in METRICS.items() if not d.get("optional")]
 
+
 def metrics_for_statement(code):
     """Metrics that may be matched on a statement: those that primarily live
     there, plus any whose `also_on` lists it (a metric that legitimately
     appears on more than one statement, e.g. depreciation on both P&L and CF)."""
-    return [m for m, d in METRICS.items()
-            if d["statement"] == code or code in d.get("also_on", [])]
+    return [m for m, d in METRICS.items() if d["statement"] == code or code in d.get("also_on", [])]
 
 
 # =============================================================================
@@ -265,15 +319,15 @@ def metrics_for_statement(code):
 
 @dataclass
 class UnitInfo:
-    unit_name: str         # e.g., "Crores", "Lakhs", "Millions", "Thousands", "Units"
-    currency: str          # e.g., "INR", "USD", "EUR", "UNKNOWN"
-    multiplier: float      # e.g., Crores -> 10_000_000, Lakhs -> 100_000, Millions -> 1_000_000
+    unit_name: str  # e.g., "Crores", "Lakhs", "Millions", "Thousands", "Units"
+    currency: str  # e.g., "INR", "USD", "EUR", "UNKNOWN"
+    multiplier: float  # e.g., Crores -> 10_000_000, Lakhs -> 100_000, Millions -> 1_000_000
     raw_text: str
 
 
 @dataclass
 class PeriodHeader:
-    current_period: str    # e.g. "31-Mar-2025" or "FY25"
+    current_period: str  # e.g. "31-Mar-2025" or "FY25"
     prior_period: str | None = None  # e.g. "31-Mar-2024" or "FY24"
     columns_detected: list[str] = None
 
@@ -297,7 +351,7 @@ PERIOD_DATE_PATTERN = re.compile(
     r"(?:as\s+at|as\s+of|for\s+the\s+year\s+ended)?\s*"
     r"(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}"
     r"|\d{4}-\d{2}-\d{2}|fy\s*\d{2,4})",
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 
@@ -317,7 +371,7 @@ def detect_periods(text: str) -> PeriodHeader:
     matches = PERIOD_DATE_PATTERN.findall(text)
     if not matches:
         return PeriodHeader(current_period="Current", prior_period="Prior", columns_detected=[])
-    
+
     unique_dates = []
     for m in matches:
         m_str = m.strip()
@@ -337,12 +391,12 @@ def detect_periods(text: str) -> PeriodHeader:
 
 @dataclass
 class PageProfile:
-    index: int                # 0-based
+    index: int  # 0-based
     width: float
     height: float
     landscape: bool
-    text: str                 # raw extracted text (kept for the locator)
-    text_quality: str         # OK / SUSPECT / EMPTY
+    text: str  # raw extracted text (kept for the locator)
+    text_quality: str  # OK / SUSPECT / EMPTY
 
 
 @dataclass
@@ -360,8 +414,11 @@ class DocProfile:
         q = {}
         for p in self.pages:
             q[p.text_quality] = q.get(p.text_quality, 0) + 1
-        return {"pages": self.n_pages, "landscape_ratio": round(self.landscape_ratio, 2),
-                "text_quality": q}
+        return {
+            "pages": self.n_pages,
+            "landscape_ratio": round(self.landscape_ratio, 2),
+            "text_quality": q,
+        }
 
 
 def _quality(text):
@@ -385,10 +442,16 @@ def profile(pdf_path):
                 text = page.extract_text() or ""
             except Exception:  # noqa: BLE001
                 text = ""
-            doc.pages.append(PageProfile(
-                index=i, width=w, height=h, landscape=w > h,
-                text=text, text_quality=_quality(text),
-            ))
+            doc.pages.append(
+                PageProfile(
+                    index=i,
+                    width=w,
+                    height=h,
+                    landscape=w > h,
+                    text=text,
+                    text_quality=_quality(text),
+                )
+            )
 
             # --- GEOMETRY STAGE: Split physical page into logical pages ---
             pdfplumber_page = pdf.pages[i]
@@ -400,11 +463,13 @@ def profile(pdf_path):
             for group in logical:
                 # Extract text from the logical page (for scoring)
                 logical_text = " ".join(w["text"] for w in group)
-                doc.logical_pages.append({
-                    "physical_page": i,
-                    "text": logical_text,
-                    "text_quality": _quality(logical_text),
-                })
+                doc.logical_pages.append(
+                    {
+                        "physical_page": i,
+                        "text": logical_text,
+                        "text_quality": _quality(logical_text),
+                    }
+                )
     return doc
 
 
@@ -414,10 +479,10 @@ def profile(pdf_path):
 
 # =============================================================================
 
-GUTTER_BINS = 200          # x-axis resolution for the coverage histogram
-SEARCH_LO, SEARCH_HI = 0.35, 0.65   # look for the gutter in the middle third
+GUTTER_BINS = 200  # x-axis resolution for the coverage histogram
+SEARCH_LO, SEARCH_HI = 0.35, 0.65  # look for the gutter in the middle third
 MAX_GUTTER_COVERAGE = 0.01  # words allowed to touch the gutter band
-MIN_SIDE_RATIO = 0.2        # both halves must carry real text
+MIN_SIDE_RATIO = 0.2  # both halves must carry real text
 
 
 def _gutter_x(page_width, words):
@@ -455,7 +520,7 @@ def split_two_up(page, words):
         alpha = sum(1 for w in side if any(c.isalpha() for c in w["text"]))
         if alpha < 0.3 * len(side):
             return None  # a side that is mostly numbers is a value-column
-                         # block of one wide table, not a logical page
+            # block of one wide table, not a logical page
     return left, right
 
 
@@ -487,21 +552,40 @@ STATEMENT_SIGNATURES = {
         # second row: bank wording (Banking Regulation Act Schedule III) —
         # banks print Capital and Liabilities / Deposits / Advances with no
         # current/non-current split, so corporate cues never fire
-        [r"total assets", r"equity and liabilities", r"total equity",
-         r"non[- ]current assets", r"current liabilities",
-         r"capital and liabilities", r"reserves and surplus",
-         r"\bdeposits\b", r"\badvances\b", r"\bborrowings\b"],
+        [
+            r"total assets",
+            r"equity and liabilities",
+            r"total equity",
+            r"non[- ]current assets",
+            r"current liabilities",
+            r"capital and liabilities",
+            r"reserves and surplus",
+            r"\bdeposits\b",
+            r"\badvances\b",
+            r"\bborrowings\b",
+        ],
     ),
     "PL": (
         # "profit AND loss" is Indian GAAP wording; IFRS reports (Singapore,
         # EU) title the same statement "profit OR loss" / "comprehensive income"
-        [r"statement of profit (?:and|or) loss", r"income statement",
-         r"statement of (?:operations|income)", r"profit and loss account",
-         r"statement of comprehensive income"],
-        [r"revenue from operations", r"total income", r"profit before tax",
-         r"earnings per (?:equity )?share", r"total expenses",
-         r"gross profit", r"cost of sales", r"profit for the year",
-         r"income tax expense"],
+        [
+            r"statement of profit (?:and|or) loss",
+            r"income statement",
+            r"statement of (?:operations|income)",
+            r"profit and loss account",
+            r"statement of comprehensive income",
+        ],
+        [
+            r"revenue from operations",
+            r"total income",
+            r"profit before tax",
+            r"earnings per (?:equity )?share",
+            r"total expenses",
+            r"gross profit",
+            r"cost of sales",
+            r"profit for the year",
+            r"income tax expense",
+        ],
     ),
     "CF": (
         [r"(?:statement of )?cash flows?", r"cash flow statement"],
@@ -512,9 +596,9 @@ STATEMENT_SIGNATURES = {
 
 @dataclass
 class Location:
-    statement: str       # BS / PL / CF
-    basis: str           # consolidated / standalone / unknown
-    page_indices: list   # 0-based, best first
+    statement: str  # BS / PL / CF
+    basis: str  # consolidated / standalone / unknown
+    page_indices: list  # 0-based, best first
     score: float
 
 
@@ -522,8 +606,7 @@ def _search(pat, text):
     """re.search with a kerning-tolerant fallback: PDF text layers sometimes
     split a word internally ("BAL ANCE SHEET"), so retry with the pattern's
     literal spaces removed against space-collapsed text."""
-    return (re.search(pat, text)
-            or re.search(pat.replace(" ", ""), text.replace(" ", "")))
+    return re.search(pat, text) or re.search(pat.replace(" ", ""), text.replace(" ", ""))
 
 
 def _is_heading(line, title_pats):
@@ -534,7 +617,7 @@ def _is_heading(line, title_pats):
     for p in title_pats:
         m = re.search(p, line)
         if m:
-            if len(line[:m.start()].split()) <= 2:
+            if len(line[: m.start()].split()) <= 2:
                 return True
         elif re.search(p.replace(" ", ""), line.replace(" ", "")):
             return True
@@ -558,7 +641,7 @@ def verify_page(pdf_path: str, page_num: int, cue_pats: list) -> bool:
 
         # (B) Column check: >= 2 distinct x-aligned numeric columns
         words = page.extract_words()
-        x_coords = [w['x0'] for w in words if w['text'].replace('.', '').isdigit()]
+        x_coords = [w["x0"] for w in words if w["text"].replace(".", "").isdigit()]
         distinct_columns = len({round(x / 50) * 50 for x in x_coords})  # 50px tolerance
         if distinct_columns < 2:
             return False
@@ -596,12 +679,10 @@ def _score_page(text, title_pats, cue_pats):
     # a fake heading, takes the +5 boost and a basis stamp, and outranks the
     # real statement. Length alone fails (dated titles run to ~10 words);
     # position is the discriminator: phrase must start within the first 2 words.
-    title_line = next((ln for ln in head_lines
-                       if _is_heading(ln, title_pats)), None)
+    title_line = next((ln for ln in head_lines if _is_heading(ln, title_pats)), None)
     # "Condensed/Summarised X" headings are management-report summaries,
     # not the statement itself — no heading boost, no basis authority
-    if title_line and re.search(r"condensed|summaris|summariz|abridged",
-                                title_line):
+    if title_line and re.search(r"condensed|summaris|summariz|abridged", title_line):
         title_line = None
     # real statements show two comparative periods (IAS 1); a page parading
     # many distinct years is a ten-year/multi-year overview. Heading-titled
@@ -639,8 +720,9 @@ def _scored_pages(doc_profile, title_pats, cue_pats):
     return scored
 
 
-def _pick(scored, doc_profile, cue_pats, code, want_basis=None,
-          prefer_consolidated=False, exclude=()):
+def _pick(
+    scored, doc_profile, cue_pats, code, want_basis=None, prefer_consolidated=False, exclude=()
+):
     """Choose the best statement page (+ its continuations) from `scored`.
 
     want_basis: if given, restrict to pages stamped that basis (used to find
@@ -690,7 +772,8 @@ def _pick(scored, doc_profile, cue_pats, code, want_basis=None,
         if 0 <= nb < len(doc_profile.logical_pages):
             neighbour = doc_profile.logical_pages[nb]
             if neighbour["physical_page"] == physical_page and _is_continuation(
-                    neighbour["text"], cue_pats):
+                neighbour["text"], cue_pats
+            ):
                 pages.append(physical_page)  # Continuation on same physical page
     return Location(code, basis, sorted(set(pages)), score)
 
@@ -719,16 +802,19 @@ def locate_alternate(doc_profile, primary):
     for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
         prim = primary.get(code)
         prim_basis = prim.basis if prim else "unknown"
-        want = ("standalone" if prim_basis == "consolidated"
-                else "consolidated" if prim_basis == "standalone"
-                else None)   # primary basis unknown -> no distinct counterpart
+        want = (
+            "standalone"
+            if prim_basis == "consolidated"
+            else "consolidated"
+            if prim_basis == "standalone"
+            else None
+        )  # primary basis unknown -> no distinct counterpart
         if want is None:
             results[code] = Location(code, "none", [], 0)
             continue
         scored = _scored_pages(doc_profile, title_pats, cue_pats)
         exclude = set(prim.page_indices) if prim else set()
-        loc = _pick(scored, doc_profile, cue_pats, code,
-                    want_basis=want, exclude=exclude)
+        loc = _pick(scored, doc_profile, cue_pats, code, want_basis=want, exclude=exclude)
         results[code] = loc or Location(code, want, [], 0)
     return results
 
@@ -783,8 +869,8 @@ MAX_VALUE_COLS = 3
 @dataclass
 class RawItem:
     label: str
-    values: list      # raw strings, left to right
-    page: int         # 0-based physical page
+    values: list  # raw strings, left to right
+    page: int  # 0-based physical page
     source: str = "geometric"
     side: str = None  # current / non-current, from the enclosing BS section
 
@@ -803,9 +889,12 @@ def _merge_detached_minus(line):
     out, i = [], 0
     while i < len(line):
         w = line[i]
-        if (w["text"] in MINUS_TOKENS and i + 1 < len(line)
-                and _is_numeric_token(line[i + 1]["text"])
-                and line[i + 1]["x0"] - w["x1"] <= MAX_SIGN_GAP):
+        if (
+            w["text"] in MINUS_TOKENS
+            and i + 1 < len(line)
+            and _is_numeric_token(line[i + 1]["text"])
+            and line[i + 1]["x0"] - w["x1"] <= MAX_SIGN_GAP
+        ):
             out.append(("-" + line[i + 1]["text"], w["x0"]))
             i += 2
         else:
@@ -834,26 +923,26 @@ def _detect_value_floor(lines):
     align further left (BHEL).
     """
     xs = [w["x0"] for ln in lines for w in ln]
-    if not xs or max(xs) - min(xs) < 50:   # no real column spread
+    if not xs or max(xs) - min(xs) < 50:  # no real column spread
         return None
-    best = None                    # (year_count, leftmost_year_x0)
+    best = None  # (year_count, leftmost_year_x0)
     for ln in lines:
         yrs = [w["x0"] for w in ln if YEAR_RE.fullmatch(w["text"])]
         if not yrs:
             continue
-        cand = (len(yrs), min(yrs))   # most years wins; tie -> rightmost
+        cand = (len(yrs), min(yrs))  # most years wins; tie -> rightmost
         if best is None or cand > best:
             best = cand
     if best is None or best[0] > MAX_VALUE_COLS:
         return None
-    anchor = best[1]               # leftmost value-year column
+    anchor = best[1]  # leftmost value-year column
     # rightmost reference-column header that sits left of the value columns
     ref_x1 = None
     for ln in lines:
         for w in ln:
             if REF_HEADER_RE.match(w["text"]) and w["x1"] < anchor:
                 ref_x1 = w["x1"] if ref_x1 is None else max(ref_x1, w["x1"])
-    if ref_x1 is None:             # no reference column to strip
+    if ref_x1 is None:  # no reference column to strip
         return None
     return ref_x1 + REF_FLOOR_MARGIN
 
@@ -872,20 +961,20 @@ def _lines_from_words(words, y_tol=2.5):
 def _items_from_words(words, page_index):
     items = []
     section = None
-    side = None   # current / non-current: duplicate labels ("- Trade
-                  # receivables") appear under both BS sections
-    side_heading = None   # text of the line that set the side; an
-                          # UNLABELED numeric row ENDING its block is the
-                          # section subtotal (Airtel prints "4,467,716
-                          # 3,862,549" with no label at all)
-    pending = None        # candidate subtotal: only real if no labeled row
-                          # follows it before the block closes (a subtotal
-                          # is the LAST row of its section, so a mid-block
-                          # orphan from a wrapped label is discarded)
-    prev_text = None      # immediately-preceding text-only line: a numeric
-                          # row whose label starts lowercase is its WRAPPED
-                          # continuation ("Profit for the year, representing
-                          # total" + "comprehensive income ... 419,056")
+    side = None  # current / non-current: duplicate labels ("- Trade
+    # receivables") appear under both BS sections
+    side_heading = None  # text of the line that set the side; an
+    # UNLABELED numeric row ENDING its block is the
+    # section subtotal (Airtel prints "4,467,716
+    # 3,862,549" with no label at all)
+    pending = None  # candidate subtotal: only real if no labeled row
+    # follows it before the block closes (a subtotal
+    # is the LAST row of its section, so a mid-block
+    # orphan from a wrapped label is discarded)
+    prev_text = None  # immediately-preceding text-only line: a numeric
+    # row whose label starts lowercase is its WRAPPED
+    # continuation ("Profit for the year, representing
+    # total" + "comprehensive income ... 419,056")
 
     def flush_pending():
         nonlocal pending
@@ -899,7 +988,7 @@ def _items_from_words(words, page_index):
     value_floor = _detect_value_floor(lines)
     for line in lines:
         line.sort(key=lambda w: w["x0"])
-        toks = _merge_detached_minus(line)          # [(text, x0), ...]
+        toks = _merge_detached_minus(line)  # [(text, x0), ...]
         texts = [t for t, _ in toks]
         # split into label prefix and trailing numeric tokens; nil
         # placeholders are tail members, not label text
@@ -914,8 +1003,11 @@ def _items_from_words(words, page_index):
         # a parenthetical can split across the boundary: "... (refer note"
         # | "15)" — the closing fragment looks numeric and would become the
         # value (closing_cash = 15!). Re-join it into the label.
-        while (label.count("(") > label.count(")") and num_pairs
-               and re.fullmatch(r"[^()]*\)", num_pairs[0][0])):
+        while (
+            label.count("(") > label.count(")")
+            and num_pairs
+            and re.fullmatch(r"[^()]*\)", num_pairs[0][0])
+        ):
             label = f"{label} {num_pairs.pop(0)[0]}"
         # COLUMN GEOMETRY: a numeric token sitting LEFT of the leftmost value
         # column is a reference-column entry (note / schedule / page number),
@@ -938,8 +1030,7 @@ def _items_from_words(words, page_index):
             # qualify with the section heading ("ASSETS" -> "total assets")
             # so the normalizer can match it. A misattributed section simply
             # fails the fuzzy threshold and the row stays unmatched.
-            if section and re.fullmatch(r"(total|basic|diluted):?", label,
-                                        re.IGNORECASE):
+            if section and re.fullmatch(r"(total|basic|diluted):?", label, re.IGNORECASE):
                 label = f"{label.rstrip(':')} {section}"
             # a total-ish row ("TOTAL LIABILITIES", "NET CURRENT ASSETS")
             # closes the block — totals FOLLOW subtotals, so a pending
@@ -952,26 +1043,27 @@ def _items_from_words(words, page_index):
                 pending = None
             if re.match(r"total\b", label, re.IGNORECASE):
                 side_heading = None
-            items.append(RawItem(label=label, values=nums, page=page_index,
-                                 side=side))
+            items.append(RawItem(label=label, values=nums, page=page_index, side=side))
         elif nums and side_heading:
             prev_text = None
             # unlabeled numeric row inside a current/non-current block:
             # candidate subtotal (last one wins). A wrong synthesis either
             # fails the fuzzy gate (absence), loses the first-wins tie to
             # the real row, or breaks a composition identity (FLAGGED).
-            pending = RawItem(label=f"total {side_heading}", values=nums,
-                              page=page_index, side=side)
+            pending = RawItem(
+                label=f"total {side_heading}", values=nums, page=page_index, side=side
+            )
         elif label:
-            flush_pending()   # a heading closes the block: the pending
-                              # unlabeled row WAS its last row = subtotal
+            flush_pending()  # a heading closes the block: the pending
+            # unlabeled row WAS its last row = subtotal
             prev_text = label
             # a text-only line is a section heading candidate; strip leading
             # roman/decimal numbering ("I. INCOME" -> "income") and heading
             # parentheticals, which are unit/face-value noise ("EARNINGS PER
             # EQUITY SHARE (Face value 1/- per share)")
-            section = re.sub(r"^[\divxlc]+[.)]\s*", "",
-                             re.sub(r"\([^)]*\)", " ", label.lower())).strip()
+            section = re.sub(
+                r"^[\divxlc]+[.)]\s*", "", re.sub(r"\([^)]*\)", " ", label.lower())
+            ).strip()
             # "non-current" contains "current": test it first. Headings that
             # mention neither leave the side untouched ("Financial assets").
             if re.search(r"non[- ]current", section):
@@ -1118,29 +1210,33 @@ def _looks_like_page_ref(tok, nxt):
 # non-current section comes first.
 # bare "(net)" is NOT a qualifier here: stripping it turned "Current tax
 # liabilities (net)" into a 92-score match for total current liabilities
-_QUALIFIER = (r"(?:loss(?:es)?|decrease|used in|in rupees|rs\.?|"
-              r"net of [^)]*|refer[^)]*|notes?\s*[\d., ]*|continued|"
-              r"face value[^)]*|"          # (Face Value of Rs 10 each)
-              r"[a-z](?:\s*\+\s*[a-z])*)")  # cross-refs: (a), (a+b+c)
+_QUALIFIER = (
+    r"(?:loss(?:es)?|decrease|used in|in rupees|rs\.?|"
+    r"net of [^)]*|refer[^)]*|notes?\s*[\d., ]*|continued|"
+    r"face value[^)]*|"  # (Face Value of Rs 10 each)
+    r"[a-z](?:\s*\+\s*[a-z])*)"
+)  # cross-refs: (a), (a+b+c)
 
 
 def clean_label(label):
     t = label.lower()
     t = re.sub(rf"/\s*\(?{_QUALIFIER}\)?(?=[\s)]|$)", " ", t)  # /(loss), /loss
-    t = re.sub(rf"\(\s*{_QUALIFIER}\s*\)", " ", t)             # (used in)
-    t = re.sub(r"^[\divxlc]+[.)]\s*", "", t)          # leading numbering: 1. / (iv)
+    t = re.sub(rf"\(\s*{_QUALIFIER}\s*\)", " ", t)  # (used in)
+    t = re.sub(r"^[\divxlc]+[.)]\s*", "", t)  # leading numbering: 1. / (iv)
     # fully-parenthesized enumerators: "(ii) Trade Receivables", "(a) …"
     t = re.sub(r"^\((?:[ivxlc]{1,4}|[a-z]|\d{1,2})\)\s*", "", t)
     # a LEADING basis word is page-level info the locator already resolved
     # ("Consolidated Net Profit for the year..."), not label identity
     t = re.sub(r"^(?:consolidated|standalone)\s+", "", t)
-    t = re.sub(r"[^a-z()/'& -]", " ", t)              # drop stray digits/symbols
+    t = re.sub(r"[^a-z()/'& -]", " ", t)  # drop stray digits/symbols
     return re.sub(r"\s+", " ", t).strip()
 
 
 def _cleaned_synonyms():
-    return {metric: sorted({clean_label(s) for s in spec["synonyms"]})
-            for metric, spec in METRICS.items()}
+    return {
+        metric: sorted({clean_label(s) for s in spec["synonyms"]})
+        for metric, spec in METRICS.items()
+    }
 
 
 CLEANED_SYNONYMS = _cleaned_synonyms()
@@ -1166,8 +1262,11 @@ def match_label(label):
         # minority interest" scores 92 against the "... BEFORE minority
         # interest" synonym — a one-token swap the threshold can't separate
         lt, st = set(t.split()), set(best_syn.split())
-        if ({"before", "after"} & lt) and ({"before", "after"} & st) \
-                and ("before" in lt) != ("before" in st):
+        if (
+            ({"before", "after"} & lt)
+            and ({"before", "after"} & st)
+            and ("before" in lt) != ("before" in st)
+        ):
             return None, 0
         return best, best_score
     return None, 0
@@ -1210,17 +1309,21 @@ def normalize(raw_items, allowed_metrics=None):
             # second reference column: a Page cross-ref (Note + Page columns,
             # BHEL). Only after a note ref was stripped — the double-column
             # signature — so single-reference statements are untouched.
-            if note_stripped and len(toks) >= 2 and _looks_like_page_ref(
-                    toks[0], toks[1]):
+            if note_stripped and len(toks) >= 2 and _looks_like_page_ref(toks[0], toks[1]):
                 toks = toks[1:]
             values = [parse_number(t) for t in toks]
             values = [v for v in values if v is not None]
             if not values:
                 continue
-            ext = Extraction(metric=metric, value=values[0],
-                             raw_label=item.label, page=item.page,
-                             source=item.source, score=score,
-                             extra_values=values[1:])
+            ext = Extraction(
+                metric=metric,
+                value=values[0],
+                raw_label=item.label,
+                page=item.page,
+                source=item.source,
+                score=score,
+                extra_values=values[1:],
+            )
             prev = by_metric.get(metric)
             if prev is None or score > prev.score:
                 by_metric[metric] = ext
@@ -1238,28 +1341,29 @@ class Status(str, Enum):
     PROBABLE = "PROBABLE"
     FLAGGED = "FLAGGED"
     MISSING = "MISSING"
-    DERIVED = "DERIVED"   # filled in by the deriver stage, never by extraction
+    DERIVED = "DERIVED"  # filled in by the deriver stage, never by extraction
 
 
 # (name, lhs metrics, rhs metrics, optional rhs metrics)
 # meaning sum(lhs) == sum(rhs); optional members join only when extracted
 IDENTITY_CHECKS = [
-    ("balance_sheet_identity",
-     ["total_assets"], ["total_liabilities", "total_equity"], []),
-    ("equity_liabilities_total",
-     ["total_assets"], ["total_equity_and_liabilities"], []),
-    ("assets_composition",
-     ["total_assets"], ["current_assets", "non_current_assets"], []),
-    ("liabilities_composition",
-     ["total_liabilities"], ["current_liabilities", "non_current_liabilities"], []),
-    ("total_income_buildup",
-     ["total_income"], ["revenue", "other_income"], []),
-    ("net_profit_buildup",
-     ["profit_before_tax"], ["net_profit", "tax_expense"], []),
-    ("cash_flow_total",
-     ["net_change_in_cash"],
-     ["cash_from_operations", "cash_from_investing", "cash_from_financing"],
-     ["fx_effect_on_cash"]),
+    ("balance_sheet_identity", ["total_assets"], ["total_liabilities", "total_equity"], []),
+    ("equity_liabilities_total", ["total_assets"], ["total_equity_and_liabilities"], []),
+    ("assets_composition", ["total_assets"], ["current_assets", "non_current_assets"], []),
+    (
+        "liabilities_composition",
+        ["total_liabilities"],
+        ["current_liabilities", "non_current_liabilities"],
+        [],
+    ),
+    ("total_income_buildup", ["total_income"], ["revenue", "other_income"], []),
+    ("net_profit_buildup", ["profit_before_tax"], ["net_profit", "tax_expense"], []),
+    (
+        "cash_flow_total",
+        ["net_change_in_cash"],
+        ["cash_from_operations", "cash_from_investing", "cash_from_financing"],
+        ["fx_effect_on_cash"],
+    ),
 ]
 
 # charges presented as a positive figure in Indian reports but as a negative
@@ -1340,10 +1444,13 @@ class Validator:
                 continue
             variants = ([rhs + present] if present else []) + [rhs]
             ok_members = next(
-                (members for members in variants
-                 if any(within_tolerance(l, r)
-                        for l in ls for r in totals(members))),
-                None)
+                (
+                    members
+                    for members in variants
+                    if any(within_tolerance(l, r) for l in ls for r in totals(members))
+                ),
+                None,
+            )
             detail = f"{name} ({ls[0]:,.1f} vs {totals(rhs)[0]:,.1f})"
             if ok_members is not None:
                 for m in lhs + ok_members:
@@ -1365,13 +1472,18 @@ class Validator:
         for m, obs in self.values.items():
             value = consensus[m]
             best = min(obs, key=lambda o: abs(o[0] - value))
-            status = (Status.FLAGGED if failed[m]
-                      else Status.VERIFIED if passed[m]
-                      else Status.PROBABLE)
+            status = (
+                Status.FLAGGED if failed[m] else Status.VERIFIED if passed[m] else Status.PROBABLE
+            )
             verdicts[m] = MetricVerdict(
-                metric=m, status=status, value=value,
+                metric=m,
+                status=status,
+                value=value,
                 sources=sorted({s for _, s, _, _ in obs}),
-                page=best[2], checks_passed=passed[m], checks_failed=failed[m])
+                page=best[2],
+                checks_passed=passed[m],
+                checks_failed=failed[m],
+            )
         for m in self.expected:
             if m not in verdicts:
                 verdicts[m] = MetricVerdict(metric=m, status=Status.MISSING)
@@ -1386,12 +1498,21 @@ class ValidationReport:
         return [v for v in self.verdicts.values() if v.status == status]
 
     def print_summary(self):
-        icon = {Status.VERIFIED: "[OK]", Status.PROBABLE: "[?] ",
-                Status.FLAGGED: "[!!]", Status.MISSING: "[--]",
-                Status.DERIVED: "[=>]"}
+        icon = {
+            Status.VERIFIED: "[OK]",
+            Status.PROBABLE: "[?] ",
+            Status.FLAGGED: "[!!]",
+            Status.MISSING: "[--]",
+            Status.DERIVED: "[=>]",
+        }
         print("=" * 72)
-        for status in (Status.FLAGGED, Status.MISSING, Status.DERIVED,
-                       Status.VERIFIED, Status.PROBABLE):
+        for status in (
+            Status.FLAGGED,
+            Status.MISSING,
+            Status.DERIVED,
+            Status.VERIFIED,
+            Status.PROBABLE,
+        ):
             for v in sorted(self.by_status(status), key=lambda x: x.metric):
                 val = f"{v.value:,.1f}" if v.value is not None else "-"
                 src = ",".join(v.sources) if v.sources else "-"
@@ -1400,17 +1521,25 @@ class ValidationReport:
                     print(f"      failed: {c}")
         print("-" * 72)
         c = {s: len(self.by_status(s)) for s in Status}
-        print(f"VERIFIED: {c[Status.VERIFIED]}   PROBABLE: {c[Status.PROBABLE]}   "
-              f"FLAGGED: {c[Status.FLAGGED]}   DERIVED: {c[Status.DERIVED]}   "
-              f"MISSING: {c[Status.MISSING]}")
+        print(
+            f"VERIFIED: {c[Status.VERIFIED]}   PROBABLE: {c[Status.PROBABLE]}   "
+            f"FLAGGED: {c[Status.FLAGGED]}   DERIVED: {c[Status.DERIVED]}   "
+            f"MISSING: {c[Status.MISSING]}"
+        )
         print("=" * 72)
 
     def to_dict(self):
-        return {m: {"status": v.status.value, "value": v.value,
-                    "sources": v.sources, "page": v.page,
-                    "checks_passed": v.checks_passed,
-                    "checks_failed": v.checks_failed}
-                for m, v in self.verdicts.items()}
+        return {
+            m: {
+                "status": v.status.value,
+                "value": v.value,
+                "sources": v.sources,
+                "page": v.page,
+                "checks_passed": v.checks_passed,
+                "checks_failed": v.checks_failed,
+            }
+            for m, v in self.verdicts.items()
+        }
 
 
 # =============================================================================
@@ -1449,8 +1578,9 @@ _TRUSTED = {Status.VERIFIED, Status.PROBABLE}
 
 
 def _expr(formula, inputs):
-    parts = [f"{'-' if s < 0 else '+'} {m}[{i.status.value[0]}]"
-             for (m, s), i in zip(formula, inputs)]
+    parts = [
+        f"{'-' if s < 0 else '+'} {m}[{i.status.value[0]}]" for (m, s), i in zip(formula, inputs)
+    ]
     return " ".join(parts).lstrip("+ ")
 
 
@@ -1480,14 +1610,16 @@ def derive(report):
         if value <= 0:
             # a non-positive result means an upstream extraction is corrupt —
             # keep MISSING but leave the diagnostic, don't discard silently
-            v.checks_failed.append(
-                f"derivation discarded (non-positive): {_expr(formula, inputs)}")
+            v.checks_failed.append(f"derivation discarded (non-positive): {_expr(formula, inputs)}")
             continue
         verdicts[target] = MetricVerdict(
-            metric=target, status=Status.DERIVED, value=value,
+            metric=target,
+            status=Status.DERIVED,
+            value=value,
             sources=["derived"],
             page=inputs[0].page,
-            checks_passed=[f"derived: {_expr(formula, inputs)}"])
+            checks_passed=[f"derived: {_expr(formula, inputs)}"],
+        )
     return report
 
 
@@ -1506,16 +1638,26 @@ def _clean(value):
         return ILLEGAL_CHARACTERS_RE.sub("", value)
     return value
 
+
 STATUS_FILL = {
-    "VERIFIED": PatternFill("solid", fgColor="C6EFCE"),   # green
-    "PROBABLE": PatternFill("solid", fgColor="FFEB9C"),   # yellow
-    "FLAGGED":  PatternFill("solid", fgColor="FFC7CE"),   # red
-    "MISSING":  PatternFill("solid", fgColor="D9D9D9"),   # grey
-    "DERIVED":  PatternFill("solid", fgColor="BDD7EE"),   # blue: computed,
-}                                                         # not extracted
+    "VERIFIED": PatternFill("solid", fgColor="C6EFCE"),  # green
+    "PROBABLE": PatternFill("solid", fgColor="FFEB9C"),  # yellow
+    "FLAGGED": PatternFill("solid", fgColor="FFC7CE"),  # red
+    "MISSING": PatternFill("solid", fgColor="D9D9D9"),  # grey
+    "DERIVED": PatternFill("solid", fgColor="BDD7EE"),  # blue: computed,
+}  # not extracted
 STATEMENT_NAMES = {"PL": "Profit & Loss", "BS": "Balance Sheet", "CF": "Cash Flow"}
-HEADERS = ["Statement", "Metric", "Value", "Status", "Page",
-           "Matched label", "Sources", "Checks passed", "Checks failed"]
+HEADERS = [
+    "Statement",
+    "Metric",
+    "Value",
+    "Status",
+    "Page",
+    "Matched label",
+    "Sources",
+    "Checks passed",
+    "Checks failed",
+]
 
 
 def _fill_sheet(ws, report_dict, extractions, meta):
@@ -1532,22 +1674,35 @@ def _fill_sheet(ws, report_dict, extractions, meta):
 
     extractions = extractions or {}
     for metric, spec in METRICS.items():
-        v = report_dict.get(metric, {"status": "MISSING", "value": None,
-                                     "sources": [], "page": None,
-                                     "checks_passed": [], "checks_failed": []})
+        v = report_dict.get(
+            metric,
+            {
+                "status": "MISSING",
+                "value": None,
+                "sources": [],
+                "page": None,
+                "checks_passed": [],
+                "checks_failed": [],
+            },
+        )
         ext = extractions.get(metric)
         page = v.get("page")
-        ws.append([_clean(x) for x in (
-            STATEMENT_NAMES[spec["statement"]],
-            metric,
-            v["value"],
-            v["status"],
-            (page + 1) if page is not None else None,   # 1-based for humans
-            ext.raw_label if ext else "",
-            ", ".join(v.get("sources", [])),
-            "; ".join(v.get("checks_passed", [])),
-            "; ".join(v.get("checks_failed", [])),
-        )])
+        ws.append(
+            [
+                _clean(x)
+                for x in (
+                    STATEMENT_NAMES[spec["statement"]],
+                    metric,
+                    v["value"],
+                    v["status"],
+                    (page + 1) if page is not None else None,  # 1-based for humans
+                    ext.raw_label if ext else "",
+                    ", ".join(v.get("sources", [])),
+                    "; ".join(v.get("checks_passed", [])),
+                    "; ".join(v.get("checks_failed", [])),
+                )
+            ]
+        )
         ws.cell(row=ws.max_row, column=4).fill = STATUS_FILL[v["status"]]
 
     widths = [14, 28, 16, 11, 6, 45, 18, 40, 40]
@@ -1568,9 +1723,9 @@ def write_excel(sheets, out_path, extractions=None, meta=None):
         sheets = [("Metrics", sheets, extractions)]
 
     wb = Workbook()
-    wb.remove(wb.active)   # we add named sheets explicitly
+    wb.remove(wb.active)  # we add named sheets explicitly
     for name, report_dict, ext in sheets:
-        ws = wb.create_sheet(title=name[:31])   # Excel caps sheet names at 31
+        ws = wb.create_sheet(title=name[:31])  # Excel caps sheet names at 31
         _fill_sheet(ws, report_dict, ext, meta)
 
     wb.save(out_path)
@@ -1592,24 +1747,23 @@ def _extract_basis(pdf_path, locations, log, label):
     for code, loc in locations.items():
         if not loc.page_indices:
             continue
-        raw = geometric.extract(pdf_path, loc.page_indices,
-                                cue_pats=locator.STATEMENT_SIGNATURES[code][1])
+        raw = geometric.extract(
+            pdf_path, loc.page_indices, cue_pats=locator.STATEMENT_SIGNATURES[code][1]
+        )
         extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
         log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
         for metric, ext in extractions.items():
             if METRICS[metric]["statement"] != code and metric in all_extractions:
                 continue
             all_extractions[metric] = ext
-            v.add(metric, ext.value, source=ext.source, page=ext.page,
-                  label_text=ext.raw_label)
+            v.add(metric, ext.value, source=ext.source, page=ext.page, label_text=ext.raw_label)
 
     report = derive(v.validate())
     return report, all_extractions
 
 
 def _sheet_name(basis):
-    return {"consolidated": "Consolidated", "standalone": "Standalone"}.get(
-        basis, "Financials")
+    return {"consolidated": "Consolidated", "standalone": "Standalone"}.get(basis, "Financials")
 
 
 def run(pdf_path, out_path=None, verbose=True):
@@ -1628,8 +1782,12 @@ def run(pdf_path, out_path=None, verbose=True):
     sample_text = " ".join(p.text for p in doc.pages[:15])
     unit_info = unit_detector.detect_unit(sample_text)
     period_info = unit_detector.detect_periods(sample_text)
-    log(f"[unit_anchor] Scale: {unit_info.unit_name} ({unit_info.currency}) | mult={unit_info.multiplier}")
-    log(f"[period_anchor] Periods: current='{period_info.current_period}', prior='{period_info.prior_period}'")
+    log(
+        f"[unit_anchor] Scale: {unit_info.unit_name} ({unit_info.currency}) | mult={unit_info.multiplier}"
+    )
+    log(
+        f"[period_anchor] Periods: current='{period_info.current_period}', prior='{period_info.prior_period}'"
+    )
 
     # 3. locate statement pages — PRIMARY (prefers consolidated) plus the
     # standalone/consolidated counterpart, so both are extracted separately.
@@ -1640,32 +1798,43 @@ def run(pdf_path, out_path=None, verbose=True):
         log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
         alt = alternate.get(code)
         if alt and alt.page_indices:
-            log(f"[locate]   alt {code}: pages {[i + 1 for i in alt.page_indices]} "
-                f"basis={alt.basis} score={alt.score:.1f}")
+            log(
+                f"[locate]   alt {code}: pages {[i + 1 for i in alt.page_indices]} "
+                f"basis={alt.basis} score={alt.score:.1f}"
+            )
 
     # 4-6b. extract + validate + derive, once per basis. The primary report is
     # the one returned (backward-compatible with the golden/benchmark harness);
     # the alternate is the standalone counterpart, shown on its own sheet.
     primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
-    report, primary_ext = _extract_basis(pdf_path, primary, log,
-                                         _sheet_name(primary_basis).lower())
+    report, primary_ext = _extract_basis(pdf_path, primary, log, _sheet_name(primary_basis).lower())
     if verbose:
         report.print_summary()
 
     sheets = [(_sheet_name(primary_basis), report.to_dict(), primary_ext)]
     if locator.has_pages(alternate):
         alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, "standalone")
-        sheets.append((_sheet_name(alternate["BS"].basis if alternate.get("BS")
-                                   and alternate["BS"].page_indices else "standalone"),
-                       alt_report.to_dict(), alt_ext))
+        sheets.append(
+            (
+                _sheet_name(
+                    alternate["BS"].basis
+                    if alternate.get("BS") and alternate["BS"].page_indices
+                    else "standalone"
+                ),
+                alt_report.to_dict(),
+                alt_ext,
+            )
+        )
 
     # 7. write — one sheet per basis
     if out_path is None:
         out_path = pdf_path.with_suffix("").name + "_metrics.xlsx"
         out_path = Path("output") / out_path
         out_path.parent.mkdir(exist_ok=True)
-    write_excel(sheets, out_path,
-                meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}")
+
+    write_excel(
+        sheets, out_path, meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}"
+    )
     log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
     return report
 

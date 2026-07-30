@@ -7,6 +7,7 @@ what CI can run fast on a clean machine.
 
 Run locally:  pytest -v
 """
+
 from finagent.deriver import derive
 from finagent.normalizer import clean_label, match_label, parse_number
 from finagent.schema import METRICS, metrics_for_statement
@@ -113,7 +114,7 @@ def test_balance_sheet_identity_verifies():
 
 def test_broken_identity_flags():
     v = Validator(expected_metrics=["total_assets", "total_liabilities", "total_equity"])
-    v.add("total_assets", 999, source="geometric")   # wrong on purpose
+    v.add("total_assets", 999, source="geometric")  # wrong on purpose
     v.add("total_liabilities", 200, source="geometric")
     v.add("total_equity", 100, source="geometric")
     report = v.validate()
@@ -151,7 +152,7 @@ def test_derive_missing_liabilities():
     report = derive(report)
     v_liab = report.verdicts["total_liabilities"]
     assert v_liab.status == Status.DERIVED
-    assert v_liab.value == 200   # 300 - 100
+    assert v_liab.value == 200  # 300 - 100
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +161,7 @@ def test_derive_missing_liabilities():
 def test_metrics_for_statement_filters_correctly():
     bs = metrics_for_statement("BS")
     assert "total_assets" in bs
-    assert "revenue" not in bs            # revenue lives on the P&L
+    assert "revenue" not in bs  # revenue lives on the P&L
     assert all(METRICS[m]["statement"] == "BS" for m in bs)
 
 
@@ -169,6 +170,7 @@ def test_metrics_for_statement_filters_correctly():
 # ---------------------------------------------------------------------------
 def test_unit_detector_crores():
     from finagent.unit_detector import detect_unit
+
     u = detect_unit("Balance Sheet as of March 31, 2025 (Rs. in Crores)")
     assert u.unit_name == "Crores"
     assert u.multiplier == 10_000_000.0
@@ -176,6 +178,7 @@ def test_unit_detector_crores():
 
 def test_unit_detector_millions():
     from finagent.unit_detector import detect_unit
+
     u = detect_unit("Statement of Profit and Loss (in Millions)")
     assert u.unit_name == "Millions"
     assert u.multiplier == 1_000_000.0
@@ -183,7 +186,7 @@ def test_unit_detector_millions():
 
 def test_unit_detector_periods():
     from finagent.unit_detector import detect_periods
+
     p = detect_periods("Financial Statements for 31 March 2025 and 31 March 2024")
     assert "31 March 2025" in p.current_period
     assert "31 March 2024" in p.prior_period
-

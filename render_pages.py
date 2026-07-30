@@ -1,7 +1,8 @@
 """Render PDF pages to PNG for visual golden-dataset reading.
 
-    python render_pages.py <pdf> <1-based pages: 180,181,184-185> [scale]
+python render_pages.py <pdf> <1-based pages: 180,181,184-185> [scale]
 """
+
 import sys
 from pathlib import Path
 
