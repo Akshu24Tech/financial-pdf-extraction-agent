@@ -14,6 +14,7 @@ proved that are externally wrong. That count should be zero.
 
     python golden_check.py [pdf-name-substring]
 """
+
 import json
 import math
 import sys
@@ -57,28 +58,36 @@ def main():
             result = grade(v["value"], g["value"])
             counts[result] += 1
             if result != "CORRECT":
-                print(f"  [{result:>5}] {pdf_name} {metric}: "
-                      f"extracted {v['value']:,.2f} vs golden {g['value']:,.2f} "
-                      f"(status {v['status']}, p{v['page']})")
+                print(
+                    f"  [{result:>5}] {pdf_name} {metric}: "
+                    f"extracted {v['value']:,.2f} vs golden {g['value']:,.2f} "
+                    f"(status {v['status']}, p{v['page']})"
+                )
             if result != "CORRECT" and v["status"] == "VERIFIED":
                 ver_wrong.append((pdf_name, metric, v["value"], g["value"]))
         rows.append((pdf_name, len(doc["metrics"]), counts))
 
     print()
-    print(f"{'PDF':<22} {'golden':>6} {'CORRECT':>8} {'SCALE':>6} "
-          f"{'SIGN':>5} {'WRONG':>6} {'MISSING':>8}")
+    print(
+        f"{'PDF':<22} {'golden':>6} {'CORRECT':>8} {'SCALE':>6} "
+        f"{'SIGN':>5} {'WRONG':>6} {'MISSING':>8}"
+    )
     print("-" * 68)
     tot = {"CORRECT": 0, "SCALE": 0, "SIGN": 0, "WRONG": 0, "MISSING": 0}
     n = 0
     for name, total, c in rows:
-        print(f"{name:<22} {total:>6} {c['CORRECT']:>8} {c['SCALE']:>6} "
-              f"{c['SIGN']:>5} {c['WRONG']:>6} {c['MISSING']:>8}")
+        print(
+            f"{name:<22} {total:>6} {c['CORRECT']:>8} {c['SCALE']:>6} "
+            f"{c['SIGN']:>5} {c['WRONG']:>6} {c['MISSING']:>8}"
+        )
         for k in tot:
             tot[k] += c[k]
         n += total
     print("-" * 68)
-    print(f"{'TOTAL':<22} {n:>6} {tot['CORRECT']:>8} {tot['SCALE']:>6} "
-          f"{tot['SIGN']:>5} {tot['WRONG']:>6} {tot['MISSING']:>8}")
+    print(
+        f"{'TOTAL':<22} {n:>6} {tot['CORRECT']:>8} {tot['SCALE']:>6} "
+        f"{tot['SIGN']:>5} {tot['WRONG']:>6} {tot['MISSING']:>8}"
+    )
     print()
     print(f"VERIFIED-but-wrong: {len(ver_wrong)}")
     for pdf_name, metric, got, want in ver_wrong:

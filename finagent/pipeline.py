@@ -1,7 +1,8 @@
 """Pipeline glue: pdf in -> validated metrics -> excel out.
 
-    python -m finagent.pipeline test_pdfs\\TCS_2024-2025.pdf
+python -m finagent.pipeline test_pdfs\\TCS_2024-2025.pdf
 """
+
 import sys
 import time
 from pathlib import Path
@@ -22,24 +23,23 @@ def _extract_basis(pdf_path, locations, log, label):
     for code, loc in locations.items():
         if not loc.page_indices:
             continue
-        raw = geometric.extract(pdf_path, loc.page_indices,
-                                cue_pats=locator.STATEMENT_SIGNATURES[code][1])
+        raw = geometric.extract(
+            pdf_path, loc.page_indices, cue_pats=locator.STATEMENT_SIGNATURES[code][1]
+        )
         extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
         log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
         for metric, ext in extractions.items():
             if METRICS[metric]["statement"] != code and metric in all_extractions:
                 continue
             all_extractions[metric] = ext
-            v.add(metric, ext.value, source=ext.source, page=ext.page,
-                  label_text=ext.raw_label)
+            v.add(metric, ext.value, source=ext.source, page=ext.page, label_text=ext.raw_label)
 
     report = derive(v.validate())
     return report, all_extractions
 
 
 def _sheet_name(basis):
-    return {"consolidated": "Consolidated", "standalone": "Standalone"}.get(
-        basis, "Financials")
+    return {"consolidated": "Consolidated", "standalone": "Standalone"}.get(basis, "Financials")
 
 
 def run(pdf_path, out_path=None, verbose=True):
@@ -58,8 +58,12 @@ def run(pdf_path, out_path=None, verbose=True):
     sample_text = " ".join(p.text for p in doc.pages[:15])
     unit_info = unit_detector.detect_unit(sample_text)
     period_info = unit_detector.detect_periods(sample_text)
-    log(f"[unit_anchor] Scale: {unit_info.unit_name} ({unit_info.currency}) | mult={unit_info.multiplier}")
-    log(f"[period_anchor] Periods: current='{period_info.current_period}', prior='{period_info.prior_period}'")
+    log(
+        f"[unit_anchor] Scale: {unit_info.unit_name} ({unit_info.currency}) | mult={unit_info.multiplier}"
+    )
+    log(
+        f"[period_anchor] Periods: current='{period_info.current_period}', prior='{period_info.prior_period}'"
+    )
 
     # 3. locate statement pages — PRIMARY (prefers consolidated) plus the
     # standalone/consolidated counterpart, so both are extracted separately.
@@ -70,24 +74,33 @@ def run(pdf_path, out_path=None, verbose=True):
         log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
         alt = alternate.get(code)
         if alt and alt.page_indices:
-            log(f"[locate]   alt {code}: pages {[i + 1 for i in alt.page_indices]} "
-                f"basis={alt.basis} score={alt.score:.1f}")
+            log(
+                f"[locate]   alt {code}: pages {[i + 1 for i in alt.page_indices]} "
+                f"basis={alt.basis} score={alt.score:.1f}"
+            )
 
     # 4-6b. extract + validate + derive, once per basis. The primary report is
     # the one returned (backward-compatible with the golden/benchmark harness);
     # the alternate is the standalone counterpart, shown on its own sheet.
     primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
-    report, primary_ext = _extract_basis(pdf_path, primary, log,
-                                         _sheet_name(primary_basis).lower())
+    report, primary_ext = _extract_basis(pdf_path, primary, log, _sheet_name(primary_basis).lower())
     if verbose:
         report.print_summary()
 
     sheets = [(_sheet_name(primary_basis), report.to_dict(), primary_ext)]
     if locator.has_pages(alternate):
         alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, "standalone")
-        sheets.append((_sheet_name(alternate["BS"].basis if alternate.get("BS")
-                                   and alternate["BS"].page_indices else "standalone"),
-                       alt_report.to_dict(), alt_ext))
+        sheets.append(
+            (
+                _sheet_name(
+                    alternate["BS"].basis
+                    if alternate.get("BS") and alternate["BS"].page_indices
+                    else "standalone"
+                ),
+                alt_report.to_dict(),
+                alt_ext,
+            )
+        )
 
     # 7. write — one sheet per basis
     if out_path is None:
@@ -95,8 +108,10 @@ def run(pdf_path, out_path=None, verbose=True):
         out_path = Path("output") / out_path
         out_path.parent.mkdir(exist_ok=True)
     from .writer import write_excel
-    write_excel(sheets, out_path,
-                meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}")
+
+    write_excel(
+        sheets, out_path, meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}"
+    )
     log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
     return report
 

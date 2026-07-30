@@ -15,6 +15,7 @@ Rules:
 - these are all-positive metrics; a non-positive result is discarded
 - ordered formulas: the first computable one wins
 """
+
 from .validator import MetricVerdict, Status
 
 # target <- [(input_metric, sign), ...]
@@ -47,8 +48,9 @@ _TRUSTED = {Status.VERIFIED, Status.PROBABLE}
 
 
 def _expr(formula, inputs):
-    parts = [f"{'-' if s < 0 else '+'} {m}[{i.status.value[0]}]"
-             for (m, s), i in zip(formula, inputs)]
+    parts = [
+        f"{'-' if s < 0 else '+'} {m}[{i.status.value[0]}]" for (m, s), i in zip(formula, inputs)
+    ]
     return " ".join(parts).lstrip("+ ")
 
 
@@ -78,12 +80,14 @@ def derive(report):
         if value <= 0:
             # a non-positive result means an upstream extraction is corrupt —
             # keep MISSING but leave the diagnostic, don't discard silently
-            v.checks_failed.append(
-                f"derivation discarded (non-positive): {_expr(formula, inputs)}")
+            v.checks_failed.append(f"derivation discarded (non-positive): {_expr(formula, inputs)}")
             continue
         verdicts[target] = MetricVerdict(
-            metric=target, status=Status.DERIVED, value=value,
+            metric=target,
+            status=Status.DERIVED,
+            value=value,
             sources=["derived"],
             page=inputs[0].page,
-            checks_passed=[f"derived: {_expr(formula, inputs)}"])
+            checks_passed=[f"derived: {_expr(formula, inputs)}"],
+        )
     return report

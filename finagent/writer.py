@@ -3,6 +3,7 @@
 One row per metric: value, validation status, page citation, the exact
 label text it was matched from, sources, and which checks passed/failed.
 """
+
 from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font, PatternFill
@@ -19,16 +20,26 @@ def _clean(value):
         return ILLEGAL_CHARACTERS_RE.sub("", value)
     return value
 
+
 STATUS_FILL = {
-    "VERIFIED": PatternFill("solid", fgColor="C6EFCE"),   # green
-    "PROBABLE": PatternFill("solid", fgColor="FFEB9C"),   # yellow
-    "FLAGGED":  PatternFill("solid", fgColor="FFC7CE"),   # red
-    "MISSING":  PatternFill("solid", fgColor="D9D9D9"),   # grey
-    "DERIVED":  PatternFill("solid", fgColor="BDD7EE"),   # blue: computed,
-}                                                         # not extracted
+    "VERIFIED": PatternFill("solid", fgColor="C6EFCE"),  # green
+    "PROBABLE": PatternFill("solid", fgColor="FFEB9C"),  # yellow
+    "FLAGGED": PatternFill("solid", fgColor="FFC7CE"),  # red
+    "MISSING": PatternFill("solid", fgColor="D9D9D9"),  # grey
+    "DERIVED": PatternFill("solid", fgColor="BDD7EE"),  # blue: computed,
+}  # not extracted
 STATEMENT_NAMES = {"PL": "Profit & Loss", "BS": "Balance Sheet", "CF": "Cash Flow"}
-HEADERS = ["Statement", "Metric", "Value", "Status", "Page",
-           "Matched label", "Sources", "Checks passed", "Checks failed"]
+HEADERS = [
+    "Statement",
+    "Metric",
+    "Value",
+    "Status",
+    "Page",
+    "Matched label",
+    "Sources",
+    "Checks passed",
+    "Checks failed",
+]
 
 
 def _fill_sheet(ws, report_dict, extractions, meta):
@@ -45,22 +56,35 @@ def _fill_sheet(ws, report_dict, extractions, meta):
 
     extractions = extractions or {}
     for metric, spec in METRICS.items():
-        v = report_dict.get(metric, {"status": "MISSING", "value": None,
-                                     "sources": [], "page": None,
-                                     "checks_passed": [], "checks_failed": []})
+        v = report_dict.get(
+            metric,
+            {
+                "status": "MISSING",
+                "value": None,
+                "sources": [],
+                "page": None,
+                "checks_passed": [],
+                "checks_failed": [],
+            },
+        )
         ext = extractions.get(metric)
         page = v.get("page")
-        ws.append([_clean(x) for x in (
-            STATEMENT_NAMES[spec["statement"]],
-            metric,
-            v["value"],
-            v["status"],
-            (page + 1) if page is not None else None,   # 1-based for humans
-            ext.raw_label if ext else "",
-            ", ".join(v.get("sources", [])),
-            "; ".join(v.get("checks_passed", [])),
-            "; ".join(v.get("checks_failed", [])),
-        )])
+        ws.append(
+            [
+                _clean(x)
+                for x in (
+                    STATEMENT_NAMES[spec["statement"]],
+                    metric,
+                    v["value"],
+                    v["status"],
+                    (page + 1) if page is not None else None,  # 1-based for humans
+                    ext.raw_label if ext else "",
+                    ", ".join(v.get("sources", [])),
+                    "; ".join(v.get("checks_passed", [])),
+                    "; ".join(v.get("checks_failed", [])),
+                )
+            ]
+        )
         ws.cell(row=ws.max_row, column=4).fill = STATUS_FILL[v["status"]]
 
     widths = [14, 28, 16, 11, 6, 45, 18, 40, 40]
@@ -81,9 +105,9 @@ def write_excel(sheets, out_path, extractions=None, meta=None):
         sheets = [("Metrics", sheets, extractions)]
 
     wb = Workbook()
-    wb.remove(wb.active)   # we add named sheets explicitly
+    wb.remove(wb.active)  # we add named sheets explicitly
     for name, report_dict, ext in sheets:
-        ws = wb.create_sheet(title=name[:31])   # Excel caps sheet names at 31
+        ws = wb.create_sheet(title=name[:31])  # Excel caps sheet names at 31
         _fill_sheet(ws, report_dict, ext, meta)
 
     wb.save(out_path)

@@ -10,10 +10,10 @@ gutter test is conservative: an almost-empty vertical band, with substantial
 text on both sides.
 """
 
-GUTTER_BINS = 200          # x-axis resolution for the coverage histogram
-SEARCH_LO, SEARCH_HI = 0.35, 0.65   # look for the gutter in the middle third
+GUTTER_BINS = 200  # x-axis resolution for the coverage histogram
+SEARCH_LO, SEARCH_HI = 0.35, 0.65  # look for the gutter in the middle third
 MAX_GUTTER_COVERAGE = 0.01  # words allowed to touch the gutter band
-MIN_SIDE_RATIO = 0.2        # both halves must carry real text
+MIN_SIDE_RATIO = 0.2  # both halves must carry real text
 
 
 def _gutter_x(page_width, words):
@@ -51,7 +51,7 @@ def split_two_up(page, words):
         alpha = sum(1 for w in side if any(c.isalpha() for c in w["text"]))
         if alpha < 0.3 * len(side):
             return None  # a side that is mostly numbers is a value-column
-                         # block of one wide table, not a logical page
+            # block of one wide table, not a logical page
     return left, right
 
 
@@ -65,6 +65,7 @@ if __name__ == "__main__":
     import sys
 
     import pdfplumber
+
     if len(sys.argv) < 2:
         print("Usage: python -m finagent.geometry <pdf_path> [page_num_1based]")
         sys.exit(1)
@@ -76,7 +77,10 @@ if __name__ == "__main__":
         halves = split_two_up(p, words)
         if halves:
             left, right = halves
-            print(f"Page {page_no + 1} is TWO-UP (A3 Split!): Left words = {len(left)}, Right words = {len(right)}")
+            print(
+                f"Page {page_no + 1} is TWO-UP (A3 Split!): Left words = {len(left)}, Right words = {len(right)}"
+            )
         else:
-            print(f"Page {page_no + 1} is SINGLE LOGICAL PAGE (No split). Total words = {len(words)}")
-
+            print(
+                f"Page {page_no + 1} is SINGLE LOGICAL PAGE (No split). Total words = {len(words)}"
+            )
