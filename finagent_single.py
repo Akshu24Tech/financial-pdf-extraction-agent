@@ -797,6 +797,7 @@ def locate_alternate(doc_profile, primary):
     side by side. Returns {code: Location}; a code with no counterpart gets an
     empty Location (basis "none"), which the pipeline reads as "this basis was
     not present in the PDF" rather than "extracted nothing".
+    Supports fallback to the primary page if it contains combined multi-column tables.
     """
     results = {}
     for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
@@ -815,6 +816,14 @@ def locate_alternate(doc_profile, primary):
         scored = _scored_pages(doc_profile, title_pats, cue_pats)
         exclude = set(prim.page_indices) if prim else set()
         loc = _pick(scored, doc_profile, cue_pats, code, want_basis=want, exclude=exclude)
+        # Fallback for combined tables (same page contains both bases in multi-column layout)
+        if not (loc and loc.page_indices) and prim and prim.page_indices:
+            for p_idx in prim.page_indices:
+                if 0 <= p_idx < len(doc_profile.logical_pages):
+                    txt = doc_profile.logical_pages[p_idx]["text"].lower()
+                    if ("standalone" in txt or "separate" in txt) and ("consolidated" in txt or "group" in txt):
+                        loc = Location(code, want, prim.page_indices, prim.score)
+                        break
         results[code] = loc or Location(code, want, [], 0)
     return results
 
@@ -958,7 +967,35 @@ def _lines_from_words(words, y_tol=2.5):
     return lines
 
 
-def _items_from_words(words, page_index):
+def _detect_column_bases(lines):
+    """Scan header lines for column-spanning basis declarations ('Standalone' vs 'Consolidated').
+
+    Returns a list of dicts: [{'basis': 'standalone', 'x0': float, 'x1': float}, ...] or empty list.
+    """
+    ranges = []
+    for line in lines[:12]:
+        text_line = " ".join(w["text"] for w in line).lower()
+        if "standalone" in text_line or "consolidated" in text_line or "separate" in text_line or "group" in text_line:
+            for w in line:
+                t = w["text"].lower()
+                if re.search(r"standalone|\bseparate\b", t):
+                    ranges.append({"basis": "standalone", "x0": w["x0"], "x1": w["x1"] + 150})
+                elif re.search(r"consolidated|\bgroup\b", t):
+                    ranges.append({"basis": "consolidated", "x0": w["x0"], "x1": w["x1"] + 150})
+    if not ranges:
+        return []
+    ranges.sort(key=lambda r: r["x0"])
+    for i in range(len(ranges) - 1):
+        mid = (ranges[i]["x1"] + ranges[i + 1]["x0"]) / 2
+        ranges[i]["x1"] = mid
+        ranges[i + 1]["x0"] = mid
+    if ranges:
+        ranges[0]["x0"] = 0.0
+        ranges[-1]["x1"] = 9999.0
+    return ranges
+
+
+def _items_from_words(words, page_index, want_basis=None):
     items = []
     section = None
     side = None  # current / non-current: duplicate labels ("- Trade
@@ -986,6 +1023,7 @@ def _items_from_words(words, page_index):
     # locate the value columns once for the whole block; None falls back to
     # the normalizer's magnitude heuristics (header not confidently found)
     value_floor = _detect_value_floor(lines)
+    basis_ranges = _detect_column_bases(lines) if want_basis else []
     for line in lines:
         line.sort(key=lambda w: w["x0"])
         toks = _merge_detached_minus(line)  # [(text, x0), ...]
@@ -1020,6 +1058,14 @@ def _items_from_words(words, page_index):
             kept = [p for p in num_pairs if p[1] >= value_floor]
             if kept:
                 num_pairs = kept
+
+        if want_basis and basis_ranges:
+            matching = [r for r in basis_ranges if r["basis"] == want_basis]
+            if matching:
+                filtered = [p for p in num_pairs if any(r["x0"] <= p[1] <= r["x1"] for r in matching)]
+                if filtered:
+                    num_pairs = filtered
+
         nums = [t for t, _ in num_pairs]
         if label and nums:
             if prev_text and label[:1].islower():
@@ -1088,12 +1134,13 @@ def _matches_statement(words, cue_pats):
     return sum(1 for p in cue_pats if re.search(p, text)) >= 1
 
 
-def extract(pdf_path, page_indices, cue_pats=None):
+def extract(pdf_path, page_indices, cue_pats=None, want_basis=None):
     """Extract raw line items from the given 0-based physical pages.
 
     cue_pats: content cues of the target statement. Used only to pick the
     right half of a split two-up page; if no half matches, keep all (the
     normalizer's allowed-metrics filter is the second line of defence).
+    want_basis: optional 'standalone' or 'consolidated' filter for multi-column tables.
     """
     items = []
     with pdfplumber.open(pdf_path) as pdf:
@@ -1114,7 +1161,7 @@ def extract(pdf_path, page_indices, cue_pats=None):
                 matching = [g for g in logical if _matches_statement(g, cue_pats)]
                 logical = matching or logical
             for group in logical:
-                items.extend(_items_from_words(group, idx))
+                items.extend(_items_from_words(group, idx, want_basis=want_basis))
     return items
 
 
@@ -1711,6 +1758,66 @@ def _fill_sheet(ws, report_dict, extractions, meta):
     ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
 
 
+SIDE_BY_SIDE_HEADERS = [
+    "Statement",
+    "Metric",
+    "Consolidated Value",
+    "Standalone Value",
+    "Difference (Consol - Standalone)",
+    "Consolidated Status",
+    "Standalone Status",
+    "Consolidated Page",
+    "Standalone Page",
+]
+
+
+def _fill_side_by_side_sheet(ws, comp_dict, meta):
+    """Render side-by-side comparison of Consolidated vs Standalone."""
+    if meta:
+        ws.append([meta])
+        ws["A1"].font = Font(bold=True, size=12)
+        ws.append([])
+
+    ws.append(SIDE_BY_SIDE_HEADERS)
+    header_row = ws.max_row
+    for c in ws[header_row]:
+        c.font = Font(bold=True)
+
+    for metric, spec in METRICS.items():
+        v = comp_dict.get(metric, {})
+        c_val = v.get("consolidated_value")
+        s_val = v.get("standalone_value")
+        diff = v.get("difference")
+        c_status = v.get("consolidated_status", "MISSING")
+        s_status = v.get("standalone_status", "MISSING")
+        c_page = v.get("consolidated_page")
+        s_page = v.get("standalone_page")
+
+        ws.append(
+            [
+                _clean(x)
+                for x in (
+                    STATEMENT_NAMES[spec["statement"]],
+                    metric,
+                    c_val,
+                    s_val,
+                    diff,
+                    c_status,
+                    s_status,
+                    (c_page + 1) if c_page is not None else None,
+                    (s_page + 1) if s_page is not None else None,
+                )
+            ]
+        )
+        ws.cell(row=ws.max_row, column=6).fill = STATUS_FILL.get(c_status, STATUS_FILL["MISSING"])
+        ws.cell(row=ws.max_row, column=7).fill = STATUS_FILL.get(s_status, STATUS_FILL["MISSING"])
+
+    widths = [14, 28, 20, 18, 30, 20, 18, 18, 16]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[ws.cell(row=header_row, column=i).column_letter].width = w
+    ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
+
+
 def write_excel(sheets, out_path, extractions=None, meta=None):
     """Write one worksheet per basis.
 
@@ -1726,7 +1833,10 @@ def write_excel(sheets, out_path, extractions=None, meta=None):
     wb.remove(wb.active)  # we add named sheets explicitly
     for name, report_dict, ext in sheets:
         ws = wb.create_sheet(title=name[:31])  # Excel caps sheet names at 31
-        _fill_sheet(ws, report_dict, ext, meta)
+        if name in ("Side-by-Side", "Comparison"):
+            _fill_side_by_side_sheet(ws, report_dict, meta)
+        else:
+            _fill_sheet(ws, report_dict, ext, meta)
 
     wb.save(out_path)
     return out_path
@@ -1748,7 +1858,10 @@ def _extract_basis(pdf_path, locations, log, label):
         if not loc.page_indices:
             continue
         raw = geometric.extract(
-            pdf_path, loc.page_indices, cue_pats=locator.STATEMENT_SIGNATURES[code][1]
+            pdf_path,
+            loc.page_indices,
+            cue_pats=locator.STATEMENT_SIGNATURES[code][1],
+            want_basis=label,
         )
         extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
         log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
@@ -1807,24 +1920,47 @@ def run(pdf_path, out_path=None, verbose=True):
     # the one returned (backward-compatible with the golden/benchmark harness);
     # the alternate is the standalone counterpart, shown on its own sheet.
     primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
-    report, primary_ext = _extract_basis(pdf_path, primary, log, _sheet_name(primary_basis).lower())
+    primary_label = _sheet_name(primary_basis).lower()
+    report, primary_ext = _extract_basis(pdf_path, primary, log, primary_label)
     if verbose:
         report.print_summary()
 
     sheets = [(_sheet_name(primary_basis), report.to_dict(), primary_ext)]
     if locator.has_pages(alternate):
-        alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, "standalone")
-        sheets.append(
-            (
-                _sheet_name(
-                    alternate["BS"].basis
-                    if alternate.get("BS") and alternate["BS"].page_indices
-                    else "standalone"
-                ),
-                alt_report.to_dict(),
-                alt_ext,
-            )
+        alt_basis = (
+            alternate["BS"].basis
+            if alternate.get("BS") and alternate["BS"].page_indices
+            else "standalone"
         )
+        alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, alt_basis)
+        sheets.append((_sheet_name(alt_basis), alt_report.to_dict(), alt_ext))
+
+        # Build Side-by-Side Comparison dict
+        comp_dict = {}
+        primary_dict = report.to_dict()
+        alt_dict = alt_report.to_dict()
+
+        consol_d = primary_dict if primary_label == "consolidated" else alt_dict
+        stand_d = alt_dict if primary_label == "consolidated" else primary_dict
+
+        for metric in METRICS:
+            c_v = consol_d.get(metric, {})
+            s_v = stand_d.get(metric, {})
+            c_val = c_v.get("value")
+            s_val = s_v.get("value")
+            diff = (c_val - s_val) if (c_val is not None and s_val is not None) else None
+
+            comp_dict[metric] = {
+                "consolidated_value": c_val,
+                "standalone_value": s_val,
+                "difference": diff,
+                "consolidated_status": c_v.get("status", "MISSING"),
+                "standalone_status": s_v.get("status", "MISSING"),
+                "consolidated_page": c_v.get("page"),
+                "standalone_page": s_v.get("page"),
+            }
+
+        sheets.insert(0, ("Side-by-Side", comp_dict, None))
 
     # 7. write — one sheet per basis
     if out_path is None:

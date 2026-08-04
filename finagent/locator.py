@@ -273,6 +273,7 @@ def locate_alternate(doc_profile, primary):
     side by side. Returns {code: Location}; a code with no counterpart gets an
     empty Location (basis "none"), which the pipeline reads as "this basis was
     not present in the PDF" rather than "extracted nothing".
+    Supports fallback to the primary page if it contains combined multi-column tables.
     """
     results = {}
     for code, (title_pats, cue_pats) in STATEMENT_SIGNATURES.items():
@@ -291,6 +292,14 @@ def locate_alternate(doc_profile, primary):
         scored = _scored_pages(doc_profile, title_pats, cue_pats)
         exclude = set(prim.page_indices) if prim else set()
         loc = _pick(scored, doc_profile, cue_pats, code, want_basis=want, exclude=exclude)
+        # Fallback for combined tables (same page contains both bases in multi-column layout)
+        if not (loc and loc.page_indices) and prim and prim.page_indices:
+            for p_idx in prim.page_indices:
+                if 0 <= p_idx < len(doc_profile.logical_pages):
+                    txt = doc_profile.logical_pages[p_idx]["text"].lower()
+                    if ("standalone" in txt or "separate" in txt) and ("consolidated" in txt or "group" in txt):
+                        loc = Location(code, want, prim.page_indices, prim.score)
+                        break
         results[code] = loc or Location(code, want, [], 0)
     return results
 

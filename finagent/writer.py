@@ -93,6 +93,66 @@ def _fill_sheet(ws, report_dict, extractions, meta):
     ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
 
 
+SIDE_BY_SIDE_HEADERS = [
+    "Statement",
+    "Metric",
+    "Consolidated Value",
+    "Standalone Value",
+    "Difference (Consol - Standalone)",
+    "Consolidated Status",
+    "Standalone Status",
+    "Consolidated Page",
+    "Standalone Page",
+]
+
+
+def _fill_side_by_side_sheet(ws, comp_dict, meta):
+    """Render side-by-side comparison of Consolidated vs Standalone."""
+    if meta:
+        ws.append([meta])
+        ws["A1"].font = Font(bold=True, size=12)
+        ws.append([])
+
+    ws.append(SIDE_BY_SIDE_HEADERS)
+    header_row = ws.max_row
+    for c in ws[header_row]:
+        c.font = Font(bold=True)
+
+    for metric, spec in METRICS.items():
+        v = comp_dict.get(metric, {})
+        c_val = v.get("consolidated_value")
+        s_val = v.get("standalone_value")
+        diff = v.get("difference")
+        c_status = v.get("consolidated_status", "MISSING")
+        s_status = v.get("standalone_status", "MISSING")
+        c_page = v.get("consolidated_page")
+        s_page = v.get("standalone_page")
+
+        ws.append(
+            [
+                _clean(x)
+                for x in (
+                    STATEMENT_NAMES[spec["statement"]],
+                    metric,
+                    c_val,
+                    s_val,
+                    diff,
+                    c_status,
+                    s_status,
+                    (c_page + 1) if c_page is not None else None,
+                    (s_page + 1) if s_page is not None else None,
+                )
+            ]
+        )
+        ws.cell(row=ws.max_row, column=6).fill = STATUS_FILL.get(c_status, STATUS_FILL["MISSING"])
+        ws.cell(row=ws.max_row, column=7).fill = STATUS_FILL.get(s_status, STATUS_FILL["MISSING"])
+
+    widths = [14, 28, 20, 18, 30, 20, 18, 18, 16]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[ws.cell(row=header_row, column=i).column_letter].width = w
+    ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
+
+
 def write_excel(sheets, out_path, extractions=None, meta=None):
     """Write one worksheet per basis.
 
@@ -108,7 +168,11 @@ def write_excel(sheets, out_path, extractions=None, meta=None):
     wb.remove(wb.active)  # we add named sheets explicitly
     for name, report_dict, ext in sheets:
         ws = wb.create_sheet(title=name[:31])  # Excel caps sheet names at 31
-        _fill_sheet(ws, report_dict, ext, meta)
+        if name in ("Side-by-Side", "Comparison"):
+            _fill_side_by_side_sheet(ws, report_dict, meta)
+        else:
+            _fill_sheet(ws, report_dict, ext, meta)
 
     wb.save(out_path)
     return out_path
+

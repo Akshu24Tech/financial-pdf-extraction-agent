@@ -6,6 +6,26 @@ Newest entries at the top. Benchmark = `benchmark.py` over the 8 test PDFs
 
 ---
 
+## 2026-08-04 — Dual-Basis Extraction (Consolidated vs Standalone Side-by-Side) (DONE)
+
+**Goal:** Extract both Standalone and Consolidated financial statements cleanly — whether they appear on separate pages or side-by-side in a single multi-column table on the same page — and export a structured **Side-by-Side Comparison** worksheet.
+
+### Changes Made:
+1. **Multi-Column Header Basis Parsing (`finagent/extractors/geometric.py`)**:
+   - Implemented `_detect_column_bases(lines)` to scan header rows for `"Standalone"` / `"Separate"` vs `"Consolidated"` / `"Group"` column spans.
+   - Enhanced `extract()` with a `want_basis` filter to extract numeric values corresponding specifically to the target basis.
+2. **Combined Table Fallback in Locator (`finagent/locator.py`)**:
+   - Updated `locate_alternate` to detect when a single page contains both Standalone and Consolidated columns and allow dual-basis extraction on the same page without excluding it.
+3. **Side-by-Side Comparison Worksheet (`finagent/writer.py` & `finagent/pipeline.py`)**:
+   - Added `_fill_side_by_side_sheet` to render a comparative worksheet with columns: `Statement | Metric | Consolidated Value | Standalone Value | Difference (Consol - Standalone) | Consolidated Status | Standalone Status | Consolidated Page | Standalone Page`.
+4. **Single-File Bundle Synchronization**:
+   - Updated `finagent_single.py` using `python -m finagent.bundler`. Verified with `--check`.
+5. **Testing**:
+   - Added `test_detect_column_bases` and `test_side_by_side_sheet_creation` in `tests/test_core.py`. All **28/28 tests passed**.
+
+---
+
+
 # CI/CD learning track (separate from extraction)
 
 Using this repo as a hands-on CI/CD practice ground now that extraction is

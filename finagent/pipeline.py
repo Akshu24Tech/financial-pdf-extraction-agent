@@ -24,7 +24,10 @@ def _extract_basis(pdf_path, locations, log, label):
         if not loc.page_indices:
             continue
         raw = geometric.extract(
-            pdf_path, loc.page_indices, cue_pats=locator.STATEMENT_SIGNATURES[code][1]
+            pdf_path,
+            loc.page_indices,
+            cue_pats=locator.STATEMENT_SIGNATURES[code][1],
+            want_basis=label,
         )
         extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
         log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
@@ -83,24 +86,47 @@ def run(pdf_path, out_path=None, verbose=True):
     # the one returned (backward-compatible with the golden/benchmark harness);
     # the alternate is the standalone counterpart, shown on its own sheet.
     primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
-    report, primary_ext = _extract_basis(pdf_path, primary, log, _sheet_name(primary_basis).lower())
+    primary_label = _sheet_name(primary_basis).lower()
+    report, primary_ext = _extract_basis(pdf_path, primary, log, primary_label)
     if verbose:
         report.print_summary()
 
     sheets = [(_sheet_name(primary_basis), report.to_dict(), primary_ext)]
     if locator.has_pages(alternate):
-        alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, "standalone")
-        sheets.append(
-            (
-                _sheet_name(
-                    alternate["BS"].basis
-                    if alternate.get("BS") and alternate["BS"].page_indices
-                    else "standalone"
-                ),
-                alt_report.to_dict(),
-                alt_ext,
-            )
+        alt_basis = (
+            alternate["BS"].basis
+            if alternate.get("BS") and alternate["BS"].page_indices
+            else "standalone"
         )
+        alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, alt_basis)
+        sheets.append((_sheet_name(alt_basis), alt_report.to_dict(), alt_ext))
+
+        # Build Side-by-Side Comparison dict
+        comp_dict = {}
+        primary_dict = report.to_dict()
+        alt_dict = alt_report.to_dict()
+
+        consol_d = primary_dict if primary_label == "consolidated" else alt_dict
+        stand_d = alt_dict if primary_label == "consolidated" else primary_dict
+
+        for metric in METRICS:
+            c_v = consol_d.get(metric, {})
+            s_v = stand_d.get(metric, {})
+            c_val = c_v.get("value")
+            s_val = s_v.get("value")
+            diff = (c_val - s_val) if (c_val is not None and s_val is not None) else None
+
+            comp_dict[metric] = {
+                "consolidated_value": c_val,
+                "standalone_value": s_val,
+                "difference": diff,
+                "consolidated_status": c_v.get("status", "MISSING"),
+                "standalone_status": s_v.get("status", "MISSING"),
+                "consolidated_page": c_v.get("page"),
+                "standalone_page": s_v.get("page"),
+            }
+
+        sheets.insert(0, ("Side-by-Side", comp_dict, None))
 
     # 7. write — one sheet per basis
     if out_path is None:
@@ -114,6 +140,7 @@ def run(pdf_path, out_path=None, verbose=True):
     )
     log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
     return report
+
 
 
 if __name__ == "__main__":
