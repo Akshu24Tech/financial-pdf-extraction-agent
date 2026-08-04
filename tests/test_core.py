@@ -190,3 +190,43 @@ def test_unit_detector_periods():
     p = detect_periods("Financial Statements for 31 March 2025 and 31 March 2024")
     assert "31 March 2025" in p.current_period
     assert "31 March 2024" in p.prior_period
+
+
+# ---------------------------------------------------------------------------
+# Multi-Column Basis & Side-by-Side Tests
+# ---------------------------------------------------------------------------
+def test_detect_column_bases():
+    from finagent.extractors.geometric import _detect_column_bases
+
+    sample_lines = [
+        [
+            {"text": "Particulars", "x0": 10.0, "x1": 80.0},
+            {"text": "Standalone", "x0": 200.0, "x1": 270.0},
+            {"text": "Consolidated", "x0": 450.0, "x1": 530.0},
+        ]
+    ]
+    bases = _detect_column_bases(sample_lines)
+    assert len(bases) == 2
+    assert bases[0]["basis"] == "standalone"
+    assert bases[1]["basis"] == "consolidated"
+
+
+def test_side_by_side_sheet_creation(tmp_path):
+    from finagent.writer import write_excel
+
+    comp_dict = {
+        "revenue": {
+            "consolidated_value": 5000.0,
+            "standalone_value": 4000.0,
+            "difference": 1000.0,
+            "consolidated_status": "VERIFIED",
+            "standalone_status": "VERIFIED",
+            "consolidated_page": 2,
+            "standalone_page": 2,
+        }
+    }
+    sheets = [("Side-by-Side", comp_dict, None)]
+    out_file = tmp_path / "test_out.xlsx"
+    write_excel(sheets, out_file)
+    assert out_file.exists()
+
