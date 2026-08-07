@@ -141,7 +141,35 @@ def _lines_from_words(words, y_tol=2.5):
     return lines
 
 
-def _items_from_words(words, page_index):
+def _detect_column_bases(lines):
+    """Scan header lines for column-spanning basis declarations ('Standalone' vs 'Consolidated').
+
+    Returns a list of dicts: [{'basis': 'standalone', 'x0': float, 'x1': float}, ...] or empty list.
+    """
+    ranges = []
+    for line in lines[:12]:
+        text_line = " ".join(w["text"] for w in line).lower()
+        if "standalone" in text_line or "consolidated" in text_line or "separate" in text_line or "group" in text_line:
+            for w in line:
+                t = w["text"].lower()
+                if re.search(r"standalone|\bseparate\b", t):
+                    ranges.append({"basis": "standalone", "x0": w["x0"], "x1": w["x1"] + 150})
+                elif re.search(r"consolidated|\bgroup\b", t):
+                    ranges.append({"basis": "consolidated", "x0": w["x0"], "x1": w["x1"] + 150})
+    if not ranges:
+        return []
+    ranges.sort(key=lambda r: r["x0"])
+    for i in range(len(ranges) - 1):
+        mid = (ranges[i]["x1"] + ranges[i + 1]["x0"]) / 2
+        ranges[i]["x1"] = mid
+        ranges[i + 1]["x0"] = mid
+    if ranges:
+        ranges[0]["x0"] = 0.0
+        ranges[-1]["x1"] = 9999.0
+    return ranges
+
+
+def _items_from_words(words, page_index, want_basis=None):
     items = []
     section = None
     side = None  # current / non-current: duplicate labels ("- Trade
@@ -169,6 +197,7 @@ def _items_from_words(words, page_index):
     # locate the value columns once for the whole block; None falls back to
     # the normalizer's magnitude heuristics (header not confidently found)
     value_floor = _detect_value_floor(lines)
+    basis_ranges = _detect_column_bases(lines) if want_basis else []
     for line in lines:
         line.sort(key=lambda w: w["x0"])
         toks = _merge_detached_minus(line)  # [(text, x0), ...]
@@ -203,6 +232,14 @@ def _items_from_words(words, page_index):
             kept = [p for p in num_pairs if p[1] >= value_floor]
             if kept:
                 num_pairs = kept
+
+        if want_basis and basis_ranges:
+            matching = [r for r in basis_ranges if r["basis"] == want_basis]
+            if matching:
+                filtered = [p for p in num_pairs if any(r["x0"] <= p[1] <= r["x1"] for r in matching)]
+                if filtered:
+                    num_pairs = filtered
+
         nums = [t for t, _ in num_pairs]
         if label and nums:
             if prev_text and label[:1].islower():
@@ -271,12 +308,13 @@ def _matches_statement(words, cue_pats):
     return sum(1 for p in cue_pats if re.search(p, text)) >= 1
 
 
-def extract(pdf_path, page_indices, cue_pats=None):
+def extract(pdf_path, page_indices, cue_pats=None, want_basis=None):
     """Extract raw line items from the given 0-based physical pages.
 
     cue_pats: content cues of the target statement. Used only to pick the
     right half of a split two-up page; if no half matches, keep all (the
     normalizer's allowed-metrics filter is the second line of defence).
+    want_basis: optional 'standalone' or 'consolidated' filter for multi-column tables.
     """
     items = []
     with pdfplumber.open(pdf_path) as pdf:
@@ -297,5 +335,6 @@ def extract(pdf_path, page_indices, cue_pats=None):
                 matching = [g for g in logical if _matches_statement(g, cue_pats)]
                 logical = matching or logical
             for group in logical:
-                items.extend(_items_from_words(group, idx))
+                items.extend(_items_from_words(group, idx, want_basis=want_basis))
     return items
+
