@@ -4,6 +4,38 @@ Running track record: what we tried, what worked, what failed, what's next.
 Newest entries at the top. Benchmark = `benchmark.py` over the 8 test PDFs
 (28 metrics each; VERIFIED / PROBABLE / FLAGGED / MISSING).
 
+## 2026-08-07 — Stage 6 & 6b Validator & Deriver Architecture Review (DONE)
+
+**Goal:** Review Stage 6 (`validator.py`) and Stage 6b (`deriver.py`) accounting equations, consensus voting mechanisms, cross-statement ties, derivation guards, and prepare technical architecture post.
+
+### Key Technical Highlights:
+1. **Mathematical Proof Engine (`validator.py`)**:
+   - Evaluates 7 core accounting identities (Balance Sheet identity $A = L + E$, Composition sums, P&L buildups, Cash Flow totals).
+   - Handles EU/IFRS vs Indian sign ambiguities (`tax_expense` negative vs positive).
+   - Enforces cross-statement ties (Cash Flow closing cash = Balance Sheet cash & equivalents).
+   - Categorizes statuses: 🟢 VERIFIED, 🟡 PROBABLE, 🔴 FLAGGED, 🔵 DERIVED, ⬜ MISSING.
+2. **Deterministic Deriver (`deriver.py`)**:
+   - Computes missing metrics arithmetically (e.g., $L = A - E$) using only trusted upstream values (VERIFIED / PROBABLE).
+   - Discards non-positive results and prevents multi-pass chaining to avoid cascading errors.
+3. **Verification**:
+   - All **28/28 unit tests** pass. Hand-verified golden suite scores **180/180 (100%)**.
+
+---
+
+## 2026-08-07 — Stage 5 Normalizer Architecture Review & Standalone Verification (DONE)
+
+**Goal:** Audit Stage 5 (`normalizer.py`) for dual-basis compatibility, verify standalone execution, document note/page reference stripping rules, and prepare technical architecture post.
+
+### Changes & Verification:
+1. **Dual-Basis Compatibility Audit**:
+   - Verified that `normalize()` seamlessly consumes `RawItem` inputs produced by dual-basis multi-column header extraction (`_detect_column_bases`) in Stage 4.
+   - Confirmed `item.side` matching (`current` vs `non-current`) prevents non-current items from shadowing current metrics.
+2. **Standalone Execution & Unit Tests**:
+   - Verified standalone execution capability using direct `RawItem` objects. Tested note-column stripping (`24`), currency formatting, negative parentheticals `(1,234.5)`, and prior-year extra values extraction.
+   - All **28/28 unit tests** in `tests/test_core.py` and **180/180 golden suite metrics** pass cleanly.
+3. **Documentation & Social Post**:
+   - Documented the 3 core Normalizer pillars (Note/Page ref stripping, identity qualifier protection, and fuzzy veto rules) for public architecture sharing.
+
 ---
 
 ## 2026-08-04 — Dual-Basis Extraction (Consolidated vs Standalone Side-by-Side) (DONE)
