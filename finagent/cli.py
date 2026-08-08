@@ -12,9 +12,11 @@ import sys
 from pathlib import Path
 
 from .pipeline import run as run_pipeline
+from .tracing import init_tracing
 
 
 def main():
+    init_tracing()
     parser = argparse.ArgumentParser(
         prog="finagent",
         description="Financial PDF Extraction Agent — Accurate extraction through verification.",

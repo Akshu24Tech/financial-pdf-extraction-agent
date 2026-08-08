@@ -243,7 +243,7 @@ def _pick(
     # there). Only adjacent logical pages on the SAME physical page qualify.
     logical_page = doc_profile.logical_pages[best]
     physical_page = logical_page["physical_page"]
-    pages = [physical_page + 1]  # Return 1-indexed physical page
+    pages = [physical_page]  # Return 0-indexed physical page
     for nb in (best - 1, best + 1):
         if 0 <= nb < len(doc_profile.logical_pages):
             neighbour = doc_profile.logical_pages[nb]
@@ -297,7 +297,9 @@ def locate_alternate(doc_profile, primary):
             for p_idx in prim.page_indices:
                 if 0 <= p_idx < len(doc_profile.logical_pages):
                     txt = doc_profile.logical_pages[p_idx]["text"].lower()
-                    if ("standalone" in txt or "separate" in txt) and ("consolidated" in txt or "group" in txt):
+                    if ("standalone" in txt or "separate" in txt) and (
+                        "consolidated" in txt or "group" in txt
+                    ):
                         loc = Location(code, want, prim.page_indices, prim.score)
                         break
         results[code] = loc or Location(code, want, [], 0)

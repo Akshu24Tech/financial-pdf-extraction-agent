@@ -229,4 +229,3 @@ def test_side_by_side_sheet_creation(tmp_path):
     out_file = tmp_path / "test_out.xlsx"
     write_excel(sheets, out_file)
     assert out_file.exists()
-

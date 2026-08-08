@@ -175,4 +175,3 @@ def write_excel(sheets, out_path, extractions=None, meta=None):
 
     wb.save(out_path)
     return out_path
-

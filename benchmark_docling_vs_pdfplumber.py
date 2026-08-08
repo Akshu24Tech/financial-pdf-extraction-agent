@@ -25,7 +25,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "."))
 from finagent.extractors.geometric import extract as pdfplumber_extract
 
 
-def extract_with_pdfplumber(pdf_path: str, page_indices: list[int] | None = None) -> list[dict[str, Any]]:
+def extract_with_pdfplumber(
+    pdf_path: str, page_indices: list[int] | None = None
+) -> list[dict[str, Any]]:
     """
     Extract tables using the current pdfplumber approach.
     Returns list of RawItem objects.
