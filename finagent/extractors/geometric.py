@@ -149,7 +149,12 @@ def _detect_column_bases(lines):
     ranges = []
     for line in lines[:12]:
         text_line = " ".join(w["text"] for w in line).lower()
-        if "standalone" in text_line or "consolidated" in text_line or "separate" in text_line or "group" in text_line:
+        if (
+            "standalone" in text_line
+            or "consolidated" in text_line
+            or "separate" in text_line
+            or "group" in text_line
+        ):
             for w in line:
                 t = w["text"].lower()
                 if re.search(r"standalone|\bseparate\b", t):
@@ -236,7 +241,9 @@ def _items_from_words(words, page_index, want_basis=None):
         if want_basis and basis_ranges:
             matching = [r for r in basis_ranges if r["basis"] == want_basis]
             if matching:
-                filtered = [p for p in num_pairs if any(r["x0"] <= p[1] <= r["x1"] for r in matching)]
+                filtered = [
+                    p for p in num_pairs if any(r["x0"] <= p[1] <= r["x1"] for r in matching)
+                ]
                 if filtered:
                     num_pairs = filtered
 
@@ -337,4 +344,3 @@ def extract(pdf_path, page_indices, cue_pats=None, want_basis=None):
             for group in logical:
                 items.extend(_items_from_words(group, idx, want_basis=want_basis))
     return items
-

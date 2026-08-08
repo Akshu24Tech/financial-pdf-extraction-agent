@@ -822,7 +822,9 @@ def locate_alternate(doc_profile, primary):
             for p_idx in prim.page_indices:
                 if 0 <= p_idx < len(doc_profile.logical_pages):
                     txt = doc_profile.logical_pages[p_idx]["text"].lower()
-                    if ("standalone" in txt or "separate" in txt) and ("consolidated" in txt or "group" in txt):
+                    if ("standalone" in txt or "separate" in txt) and (
+                        "consolidated" in txt or "group" in txt
+                    ):
                         loc = Location(code, want, prim.page_indices, prim.score)
                         break
         results[code] = loc or Location(code, want, [], 0)
@@ -976,7 +978,12 @@ def _detect_column_bases(lines):
     ranges = []
     for line in lines[:12]:
         text_line = " ".join(w["text"] for w in line).lower()
-        if "standalone" in text_line or "consolidated" in text_line or "separate" in text_line or "group" in text_line:
+        if (
+            "standalone" in text_line
+            or "consolidated" in text_line
+            or "separate" in text_line
+            or "group" in text_line
+        ):
             for w in line:
                 t = w["text"].lower()
                 if re.search(r"standalone|\bseparate\b", t):
@@ -1063,7 +1070,9 @@ def _items_from_words(words, page_index, want_basis=None):
         if want_basis and basis_ranges:
             matching = [r for r in basis_ranges if r["basis"] == want_basis]
             if matching:
-                filtered = [p for p in num_pairs if any(r["x0"] <= p[1] <= r["x1"] for r in matching)]
+                filtered = [
+                    p for p in num_pairs if any(r["x0"] <= p[1] <= r["x1"] for r in matching)
+                ]
                 if filtered:
                     num_pairs = filtered
 
@@ -1871,7 +1880,7 @@ class DummyRun:
     def set_output(self, data: Any) -> None:
         pass
 
-    def set_metadata(self, data: Dict[str, Any]) -> None:
+    def set_metadata(self, data: dict[str, Any]) -> None:
         pass
 
     def set_error_summary(self, summary: str) -> None:
@@ -1887,13 +1896,13 @@ class DummySpan:
     def set_output(self, data: Any) -> None:
         pass
 
-    def set_metadata(self, data: Dict[str, Any]) -> None:
+    def set_metadata(self, data: dict[str, Any]) -> None:
         pass
 
 
-def init_tracing(site_id: Optional[str] = None) -> bool:
+def init_tracing(site_id: str | None = None) -> bool:
     """Initialize Trodo tracing once per runtime process."""
-    global _INITIALIZED, _TRODO_AVAILABLE
+    global _INITIALIZED
     if not _TRODO_AVAILABLE or trodo is None:
         return False
     if _INITIALIZED:
@@ -1904,7 +1913,7 @@ def init_tracing(site_id: Optional[str] = None) -> bool:
         trodo.init(site_id=effective_site_id)
         _INITIALIZED = True
         return True
-    except Exception as err:
+    except Exception as err:  # noqa: BLE001
         print(f"[finagent.tracing] Failed to initialize Trodo tracing: {err}")
         return False
 
@@ -1912,8 +1921,8 @@ def init_tracing(site_id: Optional[str] = None) -> bool:
 @contextmanager
 def wrap_agent(
     name: str = DEFAULT_AGENT_NAME,
-    distinct_id: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    distinct_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
 ):
     """Context manager wrapping an entire agent execution run in Trodo."""
     init_tracing()
@@ -1942,10 +1951,8 @@ def trace_span(name: str, kind: str = "trace"):
 def flush_tracing() -> None:
     """Flush pending telemetry batches to Trodo."""
     if _INITIALIZED and trodo is not None:
-        try:
+        with contextlib.suppress(Exception):
             trodo.flush()
-        except Exception:
-            pass
 
 
 # =============================================================================
@@ -1994,10 +2001,12 @@ def run(pdf_path, out_path=None, verbose=True):
             print(msg)
 
     with wrap_agent("financial-pdf-extraction-agent") as agent_run:
-        agent_run.set_input({
-            "pdf_path": str(pdf_path),
-            "out_path": str(out_path) if out_path is not None else None,
-        })
+        agent_run.set_input(
+            {
+                "pdf_path": str(pdf_path),
+                "out_path": str(out_path) if out_path is not None else None,
+            }
+        )
 
         # 1. profile
         with trace_span("pdf_profile", kind="trace"):
@@ -2023,7 +2032,9 @@ def run(pdf_path, out_path=None, verbose=True):
             alternate = locator.locate_alternate(doc, primary)
             for code, loc in primary.items():
                 pages_1based = [i + 1 for i in loc.page_indices]
-                log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
+                log(
+                    f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}"
+                )
                 alt = alternate.get(code)
                 if alt and alt.page_indices:
                     log(
@@ -2087,19 +2098,23 @@ def run(pdf_path, out_path=None, verbose=True):
 
         with trace_span("write_excel", kind="tool"):
             write_excel(
-                sheets, out_path, meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}"
+                sheets,
+                out_path,
+                meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}",
             )
         log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
 
-        agent_run.set_output({
-            "status": "success",
-            "pdf_name": pdf_path.name,
-            "out_path": str(out_path),
-            "primary_basis": primary_basis,
-            "sheets": [s[0] for s in sheets],
-            "metrics_extracted": len(primary_ext),
-            "execution_time_seconds": round(time.time() - t0, 2),
-        })
+        agent_run.set_output(
+            {
+                "status": "success",
+                "pdf_name": pdf_path.name,
+                "out_path": str(out_path),
+                "primary_basis": primary_basis,
+                "sheets": [s[0] for s in sheets],
+                "metrics_extracted": len(primary_ext),
+                "execution_time_seconds": round(time.time() - t0, 2),
+            }
+        )
         flush_tracing()
         return report
 

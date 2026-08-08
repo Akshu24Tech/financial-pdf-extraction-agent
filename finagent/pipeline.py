@@ -55,10 +55,12 @@ def run(pdf_path, out_path=None, verbose=True):
             print(msg)
 
     with wrap_agent("financial-pdf-extraction-agent") as agent_run:
-        agent_run.set_input({
-            "pdf_path": str(pdf_path),
-            "out_path": str(out_path) if out_path is not None else None,
-        })
+        agent_run.set_input(
+            {
+                "pdf_path": str(pdf_path),
+                "out_path": str(out_path) if out_path is not None else None,
+            }
+        )
 
         # 1. profile
         with trace_span("pdf_profile", kind="trace"):
@@ -84,7 +86,9 @@ def run(pdf_path, out_path=None, verbose=True):
             alternate = locator.locate_alternate(doc, primary)
             for code, loc in primary.items():
                 pages_1based = [i + 1 for i in loc.page_indices]
-                log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
+                log(
+                    f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}"
+                )
                 alt = alternate.get(code)
                 if alt and alt.page_indices:
                     log(
@@ -149,22 +153,25 @@ def run(pdf_path, out_path=None, verbose=True):
 
         with trace_span("write_excel", kind="tool"):
             write_excel(
-                sheets, out_path, meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}"
+                sheets,
+                out_path,
+                meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}",
             )
         log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
 
-        agent_run.set_output({
-            "status": "success",
-            "pdf_name": pdf_path.name,
-            "out_path": str(out_path),
-            "primary_basis": primary_basis,
-            "sheets": [s[0] for s in sheets],
-            "metrics_extracted": len(primary_ext),
-            "execution_time_seconds": round(time.time() - t0, 2),
-        })
+        agent_run.set_output(
+            {
+                "status": "success",
+                "pdf_name": pdf_path.name,
+                "out_path": str(out_path),
+                "primary_basis": primary_basis,
+                "sheets": [s[0] for s in sheets],
+                "metrics_extracted": len(primary_ext),
+                "execution_time_seconds": round(time.time() - t0, 2),
+            }
+        )
         flush_tracing()
         return report
-
 
 
 if __name__ == "__main__":

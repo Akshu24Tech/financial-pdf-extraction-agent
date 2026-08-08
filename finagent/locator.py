@@ -297,7 +297,9 @@ def locate_alternate(doc_profile, primary):
             for p_idx in prim.page_indices:
                 if 0 <= p_idx < len(doc_profile.logical_pages):
                     txt = doc_profile.logical_pages[p_idx]["text"].lower()
-                    if ("standalone" in txt or "separate" in txt) and ("consolidated" in txt or "group" in txt):
+                    if ("standalone" in txt or "separate" in txt) and (
+                        "consolidated" in txt or "group" in txt
+                    ):
                         loc = Location(code, want, prim.page_indices, prim.score)
                         break
         results[code] = loc or Location(code, want, [], 0)
