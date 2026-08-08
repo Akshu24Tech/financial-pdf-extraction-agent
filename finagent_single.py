@@ -34,6 +34,7 @@ normalizer = sys.modules[__name__]
 unit_detector = sys.modules[__name__]
 geometric = sys.modules[__name__]
 geometry = sys.modules[__name__]
+tracing = sys.modules[__name__]
 
 
 # =============================================================================
@@ -767,7 +768,7 @@ def _pick(
     # there). Only adjacent logical pages on the SAME physical page qualify.
     logical_page = doc_profile.logical_pages[best]
     physical_page = logical_page["physical_page"]
-    pages = [physical_page + 1]  # Return 1-indexed physical page
+    pages = [physical_page]  # Return 0-indexed physical page
     for nb in (best - 1, best + 1):
         if 0 <= nb < len(doc_profile.logical_pages):
             neighbour = doc_profile.logical_pages[nb]
@@ -1844,6 +1845,111 @@ def write_excel(sheets, out_path, extractions=None, meta=None):
 
 # =============================================================================
 
+# TRACING (from finagent/tracing.py)
+
+# =============================================================================
+
+DEFAULT_SITE_ID = "e3751324-7684-484d-8dd5-b7266df80bcb"
+DEFAULT_AGENT_NAME = "financial-pdf-extraction-agent"
+
+_INITIALIZED = False
+_TRODO_AVAILABLE = False
+
+try:
+
+    _TRODO_AVAILABLE = True
+except ImportError:
+    trodo = None
+
+
+class DummyRun:
+    """Fallback run object if Trodo is not installed."""
+
+    def set_input(self, data: Any) -> None:
+        pass
+
+    def set_output(self, data: Any) -> None:
+        pass
+
+    def set_metadata(self, data: Dict[str, Any]) -> None:
+        pass
+
+    def set_error_summary(self, summary: str) -> None:
+        pass
+
+
+class DummySpan:
+    """Fallback span object if Trodo is not installed."""
+
+    def set_input(self, data: Any) -> None:
+        pass
+
+    def set_output(self, data: Any) -> None:
+        pass
+
+    def set_metadata(self, data: Dict[str, Any]) -> None:
+        pass
+
+
+def init_tracing(site_id: Optional[str] = None) -> bool:
+    """Initialize Trodo tracing once per runtime process."""
+    global _INITIALIZED, _TRODO_AVAILABLE
+    if not _TRODO_AVAILABLE or trodo is None:
+        return False
+    if _INITIALIZED:
+        return True
+
+    effective_site_id = site_id or os.getenv("TRODO_SITE_ID", DEFAULT_SITE_ID)
+    try:
+        trodo.init(site_id=effective_site_id)
+        _INITIALIZED = True
+        return True
+    except Exception as err:
+        print(f"[finagent.tracing] Failed to initialize Trodo tracing: {err}")
+        return False
+
+
+@contextmanager
+def wrap_agent(
+    name: str = DEFAULT_AGENT_NAME,
+    distinct_id: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+):
+    """Context manager wrapping an entire agent execution run in Trodo."""
+    init_tracing()
+
+    effective_distinct_id = distinct_id or os.getenv("TRODO_DISTINCT_ID", "cli-user")
+    if _INITIALIZED and trodo is not None:
+        kwargs = {"distinct_id": effective_distinct_id}
+        if metadata:
+            kwargs["metadata"] = metadata
+        with trodo.wrap_agent(name, **kwargs) as run:
+            yield run
+    else:
+        yield DummyRun()
+
+
+@contextmanager
+def trace_span(name: str, kind: str = "trace"):
+    """Context manager for child spans inside an agent run."""
+    if _INITIALIZED and trodo is not None:
+        with trodo.span(name, kind=kind) as s:
+            yield s
+    else:
+        yield DummySpan()
+
+
+def flush_tracing() -> None:
+    """Flush pending telemetry batches to Trodo."""
+    if _INITIALIZED and trodo is not None:
+        try:
+            trodo.flush()
+        except Exception:
+            pass
+
+
+# =============================================================================
+
 # PIPELINE (from finagent/pipeline.py)
 
 # =============================================================================
@@ -1887,92 +1993,115 @@ def run(pdf_path, out_path=None, verbose=True):
         if verbose:
             print(msg)
 
-    # 1. profile
-    doc = profiler.profile(pdf_path)
-    log(f"[profile] {doc.summary()}")
+    with wrap_agent("financial-pdf-extraction-agent") as agent_run:
+        agent_run.set_input({
+            "pdf_path": str(pdf_path),
+            "out_path": str(out_path) if out_path is not None else None,
+        })
 
-    # 1b. unit & period anchor engine
-    sample_text = " ".join(p.text for p in doc.pages[:15])
-    unit_info = unit_detector.detect_unit(sample_text)
-    period_info = unit_detector.detect_periods(sample_text)
-    log(
-        f"[unit_anchor] Scale: {unit_info.unit_name} ({unit_info.currency}) | mult={unit_info.multiplier}"
-    )
-    log(
-        f"[period_anchor] Periods: current='{period_info.current_period}', prior='{period_info.prior_period}'"
-    )
+        # 1. profile
+        with trace_span("pdf_profile", kind="trace"):
+            doc = profiler.profile(pdf_path)
+            log(f"[profile] {doc.summary()}")
 
-    # 3. locate statement pages — PRIMARY (prefers consolidated) plus the
-    # standalone/consolidated counterpart, so both are extracted separately.
-    primary = locator.locate(doc)
-    alternate = locator.locate_alternate(doc, primary)
-    for code, loc in primary.items():
-        pages_1based = [i + 1 for i in loc.page_indices]
-        log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
-        alt = alternate.get(code)
-        if alt and alt.page_indices:
+        # 1b. unit & period anchor engine
+        with trace_span("unit_period_detection", kind="trace"):
+            sample_text = " ".join(p.text for p in doc.pages[:15])
+            unit_info = unit_detector.detect_unit(sample_text)
+            period_info = unit_detector.detect_periods(sample_text)
             log(
-                f"[locate]   alt {code}: pages {[i + 1 for i in alt.page_indices]} "
-                f"basis={alt.basis} score={alt.score:.1f}"
+                f"[unit_anchor] Scale: {unit_info.unit_name} ({unit_info.currency}) | mult={unit_info.multiplier}"
+            )
+            log(
+                f"[period_anchor] Periods: current='{period_info.current_period}', prior='{period_info.prior_period}'"
             )
 
-    # 4-6b. extract + validate + derive, once per basis. The primary report is
-    # the one returned (backward-compatible with the golden/benchmark harness);
-    # the alternate is the standalone counterpart, shown on its own sheet.
-    primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
-    primary_label = _sheet_name(primary_basis).lower()
-    report, primary_ext = _extract_basis(pdf_path, primary, log, primary_label)
-    if verbose:
-        report.print_summary()
+        # 3. locate statement pages — PRIMARY (prefers consolidated) plus the
+        # standalone/consolidated counterpart, so both are extracted separately.
+        with trace_span("locate_pages", kind="trace"):
+            primary = locator.locate(doc)
+            alternate = locator.locate_alternate(doc, primary)
+            for code, loc in primary.items():
+                pages_1based = [i + 1 for i in loc.page_indices]
+                log(f"[locate] {code}: pages {pages_1based} basis={loc.basis} score={loc.score:.1f}")
+                alt = alternate.get(code)
+                if alt and alt.page_indices:
+                    log(
+                        f"[locate]   alt {code}: pages {[i + 1 for i in alt.page_indices]} "
+                        f"basis={alt.basis} score={alt.score:.1f}"
+                    )
 
-    sheets = [(_sheet_name(primary_basis), report.to_dict(), primary_ext)]
-    if locator.has_pages(alternate):
-        alt_basis = (
-            alternate["BS"].basis
-            if alternate.get("BS") and alternate["BS"].page_indices
-            else "standalone"
-        )
-        alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, alt_basis)
-        sheets.append((_sheet_name(alt_basis), alt_report.to_dict(), alt_ext))
+        # 4-6b. extract + validate + derive, once per basis. The primary report is
+        # the one returned (backward-compatible with the golden/benchmark harness);
+        # the alternate is the standalone counterpart, shown on its own sheet.
+        primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
+        primary_label = _sheet_name(primary_basis).lower()
+        with trace_span(f"extract_basis_{primary_label}", kind="tool"):
+            report, primary_ext = _extract_basis(pdf_path, primary, log, primary_label)
+        if verbose:
+            report.print_summary()
 
-        # Build Side-by-Side Comparison dict
-        comp_dict = {}
-        primary_dict = report.to_dict()
-        alt_dict = alt_report.to_dict()
+        sheets = [(_sheet_name(primary_basis), report.to_dict(), primary_ext)]
+        if locator.has_pages(alternate):
+            alt_basis = (
+                alternate["BS"].basis
+                if alternate.get("BS") and alternate["BS"].page_indices
+                else "standalone"
+            )
+            with trace_span(f"extract_basis_{alt_basis}", kind="tool"):
+                alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, alt_basis)
+            sheets.append((_sheet_name(alt_basis), alt_report.to_dict(), alt_ext))
 
-        consol_d = primary_dict if primary_label == "consolidated" else alt_dict
-        stand_d = alt_dict if primary_label == "consolidated" else primary_dict
+            # Build Side-by-Side Comparison dict
+            comp_dict = {}
+            primary_dict = report.to_dict()
+            alt_dict = alt_report.to_dict()
 
-        for metric in METRICS:
-            c_v = consol_d.get(metric, {})
-            s_v = stand_d.get(metric, {})
-            c_val = c_v.get("value")
-            s_val = s_v.get("value")
-            diff = (c_val - s_val) if (c_val is not None and s_val is not None) else None
+            consol_d = primary_dict if primary_label == "consolidated" else alt_dict
+            stand_d = alt_dict if primary_label == "consolidated" else primary_dict
 
-            comp_dict[metric] = {
-                "consolidated_value": c_val,
-                "standalone_value": s_val,
-                "difference": diff,
-                "consolidated_status": c_v.get("status", "MISSING"),
-                "standalone_status": s_v.get("status", "MISSING"),
-                "consolidated_page": c_v.get("page"),
-                "standalone_page": s_v.get("page"),
-            }
+            for metric in METRICS:
+                c_v = consol_d.get(metric, {})
+                s_v = stand_d.get(metric, {})
+                c_val = c_v.get("value")
+                s_val = s_v.get("value")
+                diff = (c_val - s_val) if (c_val is not None and s_val is not None) else None
 
-        sheets.insert(0, ("Side-by-Side", comp_dict, None))
+                comp_dict[metric] = {
+                    "consolidated_value": c_val,
+                    "standalone_value": s_val,
+                    "difference": diff,
+                    "consolidated_status": c_v.get("status", "MISSING"),
+                    "standalone_status": s_v.get("status", "MISSING"),
+                    "consolidated_page": c_v.get("page"),
+                    "standalone_page": s_v.get("page"),
+                }
 
-    # 7. write — one sheet per basis
-    if out_path is None:
-        out_path = pdf_path.with_suffix("").name + "_metrics.xlsx"
-        out_path = Path("output") / out_path
-        out_path.parent.mkdir(exist_ok=True)
+            sheets.insert(0, ("Side-by-Side", comp_dict, None))
 
-    write_excel(
-        sheets, out_path, meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}"
-    )
-    log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
-    return report
+        # 7. write — one sheet per basis
+        if out_path is None:
+            out_path = pdf_path.with_suffix("").name + "_metrics.xlsx"
+            out_path = Path("output") / out_path
+            out_path.parent.mkdir(exist_ok=True)
+
+        with trace_span("write_excel", kind="tool"):
+            write_excel(
+                sheets, out_path, meta=f"{pdf_path.name} - extracted {time.strftime('%Y-%m-%d %H:%M')}"
+            )
+        log(f"[write] {out_path}  ({time.time() - t0:.1f}s)")
+
+        agent_run.set_output({
+            "status": "success",
+            "pdf_name": pdf_path.name,
+            "out_path": str(out_path),
+            "primary_basis": primary_basis,
+            "sheets": [s[0] for s in sheets],
+            "metrics_extracted": len(primary_ext),
+            "execution_time_seconds": round(time.time() - t0, 2),
+        })
+        flush_tracing()
+        return report
 
 
 

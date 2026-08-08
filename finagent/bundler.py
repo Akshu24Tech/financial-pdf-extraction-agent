@@ -48,6 +48,7 @@ normalizer = sys.modules[__name__]
 unit_detector = sys.modules[__name__]
 geometric = sys.modules[__name__]
 geometry = sys.modules[__name__]
+tracing = sys.modules[__name__]
 
 '''
 
@@ -104,6 +105,7 @@ def bundle() -> str:
         ("VALIDATOR", PACKAGE_DIR / "validator.py"),
         ("DERIVER", PACKAGE_DIR / "deriver.py"),
         ("WRITER", PACKAGE_DIR / "writer.py"),
+        ("TRACING", PACKAGE_DIR / "tracing.py"),
         ("PIPELINE", PACKAGE_DIR / "pipeline.py"),
     ]
 

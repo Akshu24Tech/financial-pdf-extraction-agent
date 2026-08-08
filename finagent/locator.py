@@ -243,7 +243,7 @@ def _pick(
     # there). Only adjacent logical pages on the SAME physical page qualify.
     logical_page = doc_profile.logical_pages[best]
     physical_page = logical_page["physical_page"]
-    pages = [physical_page + 1]  # Return 1-indexed physical page
+    pages = [physical_page]  # Return 0-indexed physical page
     for nb in (best - 1, best + 1):
         if 0 <= nb < len(doc_profile.logical_pages):
             neighbour = doc_profile.logical_pages[nb]
