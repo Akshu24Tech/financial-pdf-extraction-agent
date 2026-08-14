@@ -4,6 +4,24 @@ Running track record: what we tried, what worked, what failed, what's next.
 Newest entries at the top. Benchmark = `benchmark.py` over the 8 test PDFs
 (28 metrics each; VERIFIED / PROBABLE / FLAGGED / MISSING).
 
+## 2026-08-14 — Ghost OS Wiki Integration & Stage 7 Architecture Post / Visuals (DONE)
+
+**Goal:** Analyze Ghost OS (`Akshu Mind`) LLM Wiki integration with `Financial_v2`, map actionable use cases, plan the next stage in the public architecture series (Stage 7: Writer/Receipts Engine), and generate publication-ready visual assets.
+
+### Key Highlights & Changes:
+1. **Ghost OS Wiki Audit (`Akshu Mind/projects/Financial_v2`)**:
+   - Verified the 128-node, 210-edge code graph across 11 community hubs (`_HUB Geometric Extraction`, `_HUB Value Validation`, `_HUB Pipeline & Excel Output`, etc.).
+   - Mapped 5 use cases: token-efficient agent context, refactoring protection via God nodes, edge-case/diagnostic retention, `/secure-agent-review` integration, and CI/CD AutoWiki generation.
+2. **Stage 7 Architecture Breakdown (`writer.py`)**:
+   - Documented the Receipts Engine: 5-color trust taxonomy (🟢 VERIFIED, 🟡 PROBABLE, 🔵 DERIVED, 🔴 FLAGGED, ⬜ MISSING), cell-level audit trail (page number + raw label + accounting proof), dual-basis side-by-side comparison sheet, and `ILLEGAL_CHARACTERS_RE` sanitization for OpenXML stability.
+   - Drafted social post and alternative hooks in `docs/stage_7_post_draft.md`.
+3. **Visual Assets Created in `docs/`**:
+   - `docs/stage_7_diagram.jpg`: Hand-drawn chalkboard sketch (Input PDF -> Shield Validation -> Processed Grid with status pills -> Audit Trail Magnifier).
+   - `docs/stage_7_mockup.jpg`: High-resolution UI spreadsheet mockup with audit callout receipt.
+   - Configured relative image paths in `docs/stage_7_post_draft.md` for live markdown preview.
+
+---
+
 ## 2026-08-07 — Stage 6 & 6b Validator & Deriver Architecture Review (DONE)
 
 **Goal:** Review Stage 6 (`validator.py`) and Stage 6b (`deriver.py`) accounting equations, consensus voting mechanisms, cross-statement ties, derivation guards, and prepare technical architecture post.
