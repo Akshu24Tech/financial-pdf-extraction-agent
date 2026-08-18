@@ -32,7 +32,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from statistics import median
-from typing import Optional, List, Dict, Tuple
+import contextlib
+import os
+from contextlib import contextmanager
+from typing import Optional, List, Dict, Tuple, Any
 
 from pypdf import PdfReader
 import pdfplumber
@@ -40,6 +43,11 @@ from rapidfuzz import fuzz
 from openpyxl import Workbook
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font, PatternFill
+
+try:
+    import trodo
+except ImportError:
+    trodo = None
 
 # Alias modular namespaces to the current module to support the bundled single-file build
 profiler = sys.modules[__name__]

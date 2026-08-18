@@ -45,6 +45,27 @@ class DocProfile:
         }
 
 
+def _words_to_text(words, y_tol=3):
+    if not words:
+        return ""
+    sorted_words = sorted(words, key=lambda w: (round(w.get("top", 0) / y_tol) * y_tol, w.get("x0", 0)))
+    lines = []
+    cur_line = []
+    cur_top = None
+    for w in sorted_words:
+        top_bucket = round(w.get("top", 0) / y_tol) * y_tol
+        if cur_top is None or abs(top_bucket - cur_top) <= y_tol:
+            cur_line.append(w["text"])
+            cur_top = top_bucket
+        else:
+            lines.append(" ".join(cur_line))
+            cur_line = [w["text"]]
+            cur_top = top_bucket
+    if cur_line:
+        lines.append(" ".join(cur_line))
+    return "\n".join(lines)
+
+
 def _quality(text):
     if not text or len(text.strip()) < 50:
         return "EMPTY"
@@ -85,8 +106,8 @@ def profile(pdf_path):
                 words = upright
             logical = geometry.logical_pages(pdfplumber_page, words)
             for group in logical:
-                # Extract text from the logical page (for scoring)
-                logical_text = " ".join(w["text"] for w in group)
+                # Extract text from the logical page (for scoring) with line structure
+                logical_text = _words_to_text(group)
                 doc.logical_pages.append(
                     {
                         "physical_page": i,
