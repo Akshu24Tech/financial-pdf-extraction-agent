@@ -24,7 +24,7 @@ METRICS = {
     },
     "other_income": {
         "statement": "PL",
-        "synonyms": ["other income", "other operating income"],
+        "synonyms": ["other income"],
     },
     "total_income": {
         "statement": "PL",

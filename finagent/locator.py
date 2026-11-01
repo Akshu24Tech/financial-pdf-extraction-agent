@@ -24,10 +24,7 @@ NUM_RE = re.compile(r"\d[\d,]{4,}|\d[\d,]*\.\d{2}\b")
 # cues confirm we're on the statement itself rather than a ToC mention.
 STATEMENT_SIGNATURES = {
     "BS": (
-        [r"balance sheet", r"statement of financial position"],
-        # second row: bank wording (Banking Regulation Act Schedule III) —
-        # banks print Capital and Liabilities / Deposits / Advances with no
-        # current/non-current split, so corporate cues never fire
+        [r"(?:consolidated |standalone |separate )?balance sheet", r"statement of (?:financial position|assets and liabilities)"],
         [
             r"total assets",
             r"equity and liabilities",
@@ -42,10 +39,9 @@ STATEMENT_SIGNATURES = {
         ],
     ),
     "PL": (
-        # "profit AND loss" is Indian GAAP wording; IFRS reports (Singapore,
-        # EU) title the same statement "profit OR loss" / "comprehensive income"
         [
-            r"statement of profit (?:and|or) loss",
+            r"statement of (?:consolidated |standalone |separate )?profit (?:and|or) loss",
+            r"(?:consolidated |standalone |separate )?statement of profit (?:and|or) loss",
             r"income statement",
             r"statement of (?:operations|income)",
             r"profit and loss account",
@@ -64,7 +60,11 @@ STATEMENT_SIGNATURES = {
         ],
     ),
     "CF": (
-        [r"(?:statement of )?cash flows?", r"cash flow statement"],
+        [
+            r"(?:statement of )?(?:consolidated |standalone |separate )?cash flows?",
+            r"(?:consolidated |standalone |separate )?statement of cash flows?",
+            r"(?:consolidated |standalone |separate )?cash flow statement",
+        ],
         [r"operating activities", r"investing activities", r"financing activities"],
     ),
 }
@@ -196,6 +196,36 @@ def _scored_pages(doc_profile, title_pats, cue_pats):
     return scored
 
 
+DISQUALIFYING_HEADINGS = [
+    r"notes? to (?:the )?(?:consolidated |standalone |separate )?financial statements",
+    r"significant accounting policies",
+    r"independent auditor(?:'s)? report",
+    r"directors?(?:'s)? report",
+    r"management discussion",
+    r"corporate governance",
+    r"shareholder information",
+]
+
+
+def _is_continuation(text, cue_pats, code=None):
+    """True if text looks like a multi-page continuation of the current statement."""
+    if not text or len(text.strip()) < 50:
+        return False
+    t = text.lower()
+    head_lines = [ln.strip() for ln in t.splitlines()[:6] if ln.strip()]
+    for ln in head_lines:
+        if any(re.search(p, ln) for p in DISQUALIFYING_HEADINGS):
+            return False
+        for other_code, (title_pats, _) in STATEMENT_SIGNATURES.items():
+            if code and other_code != code and _is_heading(ln, title_pats):
+                return False
+    numbers = len(NUM_RE.findall(t))
+    if numbers < 6:
+        return False
+    cues = sum(1 for p in cue_pats if re.search(p, t))
+    return cues >= 1
+
+
 def _pick(
     scored, doc_profile, cue_pats, code, want_basis=None, prefer_consolidated=False, exclude=()
 ):
@@ -239,18 +269,24 @@ def _pick(
         logical_page = doc_profile.logical_pages[best]
         physical_page = logical_page["physical_page"] + 1  # 1-indexed
 
-    # Statements may continue on a neighbouring logical page (which lacks the title
-    # there). Only adjacent logical pages on the SAME physical page qualify.
+    # Statements may continue on subsequent physical pages (e.g. 2-page Balance Sheets or 2-3 page Cash Flows)
     logical_page = doc_profile.logical_pages[best]
     physical_page = logical_page["physical_page"]
-    pages = [physical_page]  # Return 0-indexed physical page
-    for nb in (best - 1, best + 1):
-        if 0 <= nb < len(doc_profile.logical_pages):
-            neighbour = doc_profile.logical_pages[nb]
-            if neighbour["physical_page"] == physical_page and _is_continuation(
-                neighbour["text"], cue_pats
-            ):
-                pages.append(physical_page)  # Continuation on same physical page
+    pages = [physical_page]
+
+    # Look ahead for physical page continuations
+    max_lookahead = 2 if code in ("CF", "BS") else 1
+    curr_phys = physical_page
+    for offset in range(1, max_lookahead + 1):
+        target_phys = curr_phys + offset
+        phys_logical = [lp for lp in doc_profile.logical_pages if lp["physical_page"] == target_phys]
+        if not phys_logical:
+            break
+        if any(_is_continuation(lp["text"], cue_pats, code) for lp in phys_logical):
+            pages.append(target_phys)
+        else:
+            break
+
     return Location(code, basis, sorted(set(pages)), score)
 
 
@@ -309,10 +345,3 @@ def locate_alternate(doc_profile, primary):
 def has_pages(locations):
     """True if any statement in this basis actually resolved to pages."""
     return any(loc.page_indices for loc in locations.values())
-
-
-def _is_continuation(text, cue_pats):
-    t = text.lower()
-    cues = sum(1 for p in cue_pats if re.search(p, t))
-    numbers = len(NUM_RE.findall(t))
-    return cues >= 1 and numbers >= 8
