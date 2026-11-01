@@ -50,18 +50,49 @@ jobs:
         run: pytest -v
 
 
-  # A GATE job: one job that succeeds only if EVERY matrix job above passed.
+  # Build the Docker image and prove it actually serves, on every push.
+  # A Dockerfile that builds but crashes on start is caught here, not in prod.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t finagent:ci .
+
+      - name: Start the container
+        run: docker run -d --name finagent -p 8501:8501 finagent:ci
+
+      - name: Wait until it reports healthy
+        # Uses the image's own HEALTHCHECK, so CI tests what the host will see.
+        run: |
+          for i in $(seq 1 30); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' finagent)
+            echo "attempt $i: $status"
+            if [ "$status" = "healthy" ]; then exit 0; fi
+            sleep 3
+          done
+          echo "Container never became healthy. Logs:"
+          docker logs finagent
+          exit 1
+
+      - name: Smoke-test the HTTP endpoint
+        run: curl --fail --silent http://localhost:8501/_stcore/health
+
+  # A GATE job: succeeds only if EVERY job above passed (all test versions + docker).
   # We require THIS single check in branch protection, so the protection rule
   # never breaks when we add/remove Python versions from the matrix.
   all-green:
     if: always()              # run even if the matrix failed, so it can report
-    needs: [test]             # wait for all matrix jobs to finish
+    needs: [test, docker]     # wait for tests AND the image check
     runs-on: ubuntu-latest
     steps:
       - name: Confirm every test job passed
         run: |
-          if [ "${{ needs.test.result }}" != "success" ]; then
-            echo "One or more matrix jobs failed."
+          if [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.docker.result }}" != "success" ]; then
+            echo "A test job or the Docker image check failed."
             exit 1
           fi
-          echo "All matrix jobs passed."
+          echo "All tests passed and the image serves."

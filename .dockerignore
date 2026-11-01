@@ -1,0 +1,31 @@
+# Everything listed here is NOT sent to Docker when building.
+# Smaller build context = faster builds, smaller image, and no secrets or
+# copyrighted PDFs accidentally baked into a public image.
+
+.git
+.github
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+*.egg-info
+build
+dist
+
+# Copyrighted annual reports and generated output must never ship in an image.
+test_pdfs
+output
+scratch
+graphify-out
+
+# Dev-only material the running app doesn't need.
+tests
+experiments
+docs
+golden
+*.md
+uv.lock
+.env
