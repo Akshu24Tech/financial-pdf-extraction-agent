@@ -8,13 +8,17 @@ pulls out the key numbers, **proves each one is correct**, and writes a tidy
 Excel where every value carries its own receipt (page number, the exact label
 it came from, and which checks it passed).
 
+**🚀 [Open the live demo](https://financial-pdf-extraction-agent-cx3yk9zkkmekw9o8kda8zp.streamlit.app/)** — click *Try a sample* for an instant result.
+
 ![FinAgent web demo — every extracted number shown with its status, page, and the accounting checks it passed](docs/demo.png)
 
 ---
 
 ## Try it in 30 seconds
 
-A web demo ([`app.py`](app.py)) wraps the exact same engine as the CLI, so it
+**Online:** open the [live demo](https://financial-pdf-extraction-agent-cx3yk9zkkmekw9o8kda8zp.streamlit.app/).
+
+**Locally:** a web demo ([`app.py`](app.py)) wraps the exact same engine as the CLI, so it
 can never disagree with the tests.
 
 ```powershell
