@@ -1,0 +1,327 @@
+{
+  "non_current_assets": {
+    "status": "VERIFIED",
+    "value": 4467716.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "assets_composition (5,143,604.0 vs 5,143,604.0)"
+    ],
+    "checks_failed": []
+  },
+  "inventories": {
+    "status": "PROBABLE",
+    "value": 4517.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "trade_receivables": {
+    "status": "PROBABLE",
+    "value": 74557.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "cash_and_equivalents": {
+    "status": "FLAGGED",
+    "value": 61056.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": [
+      "closing_cash_ties_to_balance_sheet (61,056.0 vs 106,531.0)"
+    ]
+  },
+  "current_assets": {
+    "status": "VERIFIED",
+    "value": 675888.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "assets_composition (5,143,604.0 vs 5,143,604.0)"
+    ],
+    "checks_failed": []
+  },
+  "total_assets": {
+    "status": "VERIFIED",
+    "value": 5143604.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "equity_liabilities_total (5,143,604.0 vs 5,143,604.0)",
+      "assets_composition (5,143,604.0 vs 5,143,604.0)"
+    ],
+    "checks_failed": []
+  },
+  "non_current_liabilities": {
+    "status": "VERIFIED",
+    "value": 1804525.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "liabilities_composition (3,608,927.0 vs 3,608,927.0)"
+    ],
+    "checks_failed": []
+  },
+  "current_liabilities": {
+    "status": "VERIFIED",
+    "value": 1804402.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "liabilities_composition (3,608,927.0 vs 3,608,927.0)"
+    ],
+    "checks_failed": []
+  },
+  "total_liabilities": {
+    "status": "VERIFIED",
+    "value": 3608927.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "liabilities_composition (3,608,927.0 vs 3,608,927.0)"
+    ],
+    "checks_failed": []
+  },
+  "total_equity_and_liabilities": {
+    "status": "VERIFIED",
+    "value": 5143604.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "equity_liabilities_total (5,143,604.0 vs 5,143,604.0)"
+    ],
+    "checks_failed": []
+  },
+  "revenue": {
+    "status": "PROBABLE",
+    "value": 1729852.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "other_income": {
+    "status": "PROBABLE",
+    "value": 15737.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "employee_costs": {
+    "status": "PROBABLE",
+    "value": 63089.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "depreciation": {
+    "status": "PROBABLE",
+    "value": 455703.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "finance_costs": {
+    "status": "PROBABLE",
+    "value": 217539.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "profit_before_tax": {
+    "status": "PROBABLE",
+    "value": 383985.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "net_profit": {
+    "status": "PROBABLE",
+    "value": 374813.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "total_comprehensive_income": {
+    "status": "PROBABLE",
+    "value": 400507.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "eps_basic": {
+    "status": "PROBABLE",
+    "value": 58.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 198,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "cash_from_operations": {
+    "status": "VERIFIED",
+    "value": 983322.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 200,
+    "checks_passed": [
+      "cash_flow_total (15,292.0 vs 15,292.0)"
+    ],
+    "checks_failed": []
+  },
+  "cash_from_investing": {
+    "status": "VERIFIED",
+    "value": -602698.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 200,
+    "checks_passed": [
+      "cash_flow_total (15,292.0 vs 15,292.0)"
+    ],
+    "checks_failed": []
+  },
+  "cash_from_financing": {
+    "status": "VERIFIED",
+    "value": -365332.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 200,
+    "checks_passed": [
+      "cash_flow_total (15,292.0 vs 15,292.0)"
+    ],
+    "checks_failed": []
+  },
+  "net_change_in_cash": {
+    "status": "VERIFIED",
+    "value": 15292.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 200,
+    "checks_passed": [
+      "cash_flow_total (15,292.0 vs 15,292.0)"
+    ],
+    "checks_failed": []
+  },
+  "fx_effect_on_cash": {
+    "status": "PROBABLE",
+    "value": 718.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 200,
+    "checks_passed": [],
+    "checks_failed": []
+  },
+  "closing_cash": {
+    "status": "FLAGGED",
+    "value": 106531.0,
+    "sources": [
+      "geometric"
+    ],
+    "page": 200,
+    "checks_passed": [],
+    "checks_failed": [
+      "closing_cash_ties_to_balance_sheet (61,056.0 vs 106,531.0)"
+    ]
+  },
+  "total_income": {
+    "status": "DERIVED",
+    "value": 1745589.0,
+    "sources": [
+      "derived"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "derived: revenue[P] + other_income[P]"
+    ],
+    "checks_failed": []
+  },
+  "total_expenses": {
+    "status": "DERIVED",
+    "value": 1361604.0,
+    "sources": [
+      "derived"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "derived: revenue[P] + other_income[P] - profit_before_tax[P]"
+    ],
+    "checks_failed": []
+  },
+  "tax_expense": {
+    "status": "DERIVED",
+    "value": 9172.0,
+    "sources": [
+      "derived"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "derived: profit_before_tax[P] - net_profit[P]"
+    ],
+    "checks_failed": []
+  },
+  "total_equity": {
+    "status": "DERIVED",
+    "value": 1534677.0,
+    "sources": [
+      "derived"
+    ],
+    "page": 198,
+    "checks_passed": [
+      "derived: total_equity_and_liabilities[V] - total_liabilities[V]"
+    ],
+    "checks_failed": []
+  }
+}

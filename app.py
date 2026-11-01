@@ -14,6 +14,7 @@ Design notes (know these for the interview):
   instantly instead of re-running a 30-200s extraction.
 """
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -39,6 +40,17 @@ STATUS_MEANING = {
     "FLAGGED": "Broke an accounting identity. Needs a human.",
     "MISSING": "Not found in the report.",
 }
+
+
+SAMPLE_PATH = Path(__file__).parent / "samples" / "airtel_fy25.json"
+
+
+@st.cache_data(show_spinner=False)
+def load_sample() -> dict:
+    """Precomputed result for one report, so the hosted demo is instant and
+    needs no copyrighted PDF on the server. The numbers are facts from a public
+    annual report; the PDF itself is never shipped."""
+    return json.loads(SAMPLE_PATH.read_text())
 
 
 @st.cache_data(show_spinner=False, max_entries=5)
@@ -97,16 +109,32 @@ with st.expander("What do the statuses mean?"):
 
 uploaded = st.file_uploader("Annual report PDF", type="pdf")
 
-if uploaded is None:
-    st.info("Upload a PDF to start. Large reports (300+ pages) can take a few minutes.")
+# Sample mode: a one-click precomputed result, so recruiters see the full
+# output without a live 30-200s run. A real upload always overrides it.
+if "use_sample" not in st.session_state:
+    st.session_state.use_sample = False
+if st.button("▶ Try a sample — Bharti Airtel FY2024-25") and SAMPLE_PATH.exists():
+    st.session_state.use_sample = True
+if uploaded is not None:
+    st.session_state.use_sample = False
+
+if uploaded is None and not st.session_state.use_sample:
+    st.info("Upload a PDF to start, or try the sample. Large reports (300+ pages) can take a few minutes.")
     st.stop()
 
-with st.spinner("Profiling → locating statements → extracting → validating…"):
-    try:
-        metrics, excel_bytes = extract(uploaded.getvalue(), uploaded.name)
-    except Exception as e:  # noqa: BLE001 — show a readable error, not a stack trace
-        st.error(f"Extraction failed: {e}")
-        st.stop()
+if st.session_state.use_sample and uploaded is None:
+    metrics = load_sample()
+    excel_bytes = None
+    source_name = "Bharti_Airtel_FY25"
+    st.success("Sample result — precomputed from Bharti Airtel's public FY2024-25 annual report. Upload your own PDF above to run the live pipeline.")
+else:
+    with st.spinner("Profiling → locating statements → extracting → validating…"):
+        try:
+            metrics, excel_bytes = extract(uploaded.getvalue(), uploaded.name)
+        except Exception as e:  # noqa: BLE001 — show a readable error, not a stack trace
+            st.error(f"Extraction failed: {e}")
+            st.stop()
+    source_name = Path(uploaded.name).stem
 
 # ---------------------------------------------------------------- summary ---
 counts = {s: sum(1 for m in metrics.values() if m["status"] == s) for s in STATUS_ORDER}
@@ -141,9 +169,12 @@ for name, m in sorted(metrics.items(), key=lambda kv: STATUS_ORDER.index(kv[1]["
         for c in m["checks_failed"]:
             st.write(f"❌ {c}")
 
-st.download_button(
-    "⬇️ Download Excel (with page + check columns)",
-    data=excel_bytes,
-    file_name=Path(uploaded.name).stem + "_metrics.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-)
+if excel_bytes is not None:
+    st.download_button(
+        "⬇️ Download Excel (with page + check columns)",
+        data=excel_bytes,
+        file_name=source_name + "_metrics.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+else:
+    st.caption("Upload your own PDF to download the Excel workbook with page and check columns.")
