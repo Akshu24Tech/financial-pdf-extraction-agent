@@ -12,6 +12,8 @@ it came from, and which checks it passed).
 
 ![FinAgent web demo — every extracted number shown with its status, page, and the accounting checks it passed](docs/demo.png)
 
+**🎬 [Watch the demo](docs/demo.mp4)** — a short screen recording of the Streamlit app extracting and verifying a report end to end.
+
 ---
 
 ## Try it in 30 seconds
