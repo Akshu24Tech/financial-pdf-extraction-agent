@@ -500,6 +500,13 @@ def profile(pdf_path):
                         "text_quality": _quality(logical_text),
                     }
                 )
+
+            # Release pdfplumber's per-page cache. Without this, every page's
+            # parsed objects stay resident and peak memory grows with the page
+            # count — a 600+ page report can exhaust a small host's RAM mid-run.
+            pdfplumber_page.flush_cache()
+            if hasattr(pdfplumber_page.get_textmap, "cache_clear"):
+                pdfplumber_page.get_textmap.cache_clear()
     return doc
 
 
