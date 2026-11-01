@@ -15,6 +15,7 @@ Design notes (know these for the interview):
 """
 
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -43,6 +44,11 @@ STATUS_MEANING = {
 
 
 SAMPLE_PATH = Path(__file__).parent / "samples" / "airtel_fy25.json"
+
+# A large annual report can exhaust a free hosting tier's RAM mid-extraction and
+# kill the process. Set FINAGENT_MAX_UPLOAD_MB (e.g. 8) on the host to reject
+# oversized uploads gracefully; unset (0) means no limit, for local use.
+MAX_UPLOAD_MB = int(os.getenv("FINAGENT_MAX_UPLOAD_MB", "0"))
 
 
 @st.cache_data(show_spinner=False)
@@ -128,6 +134,16 @@ if st.session_state.use_sample and uploaded is None:
     source_name = "Bharti_Airtel_FY25"
     st.success("Sample result — precomputed from Bharti Airtel's public FY2024-25 annual report. Upload your own PDF above to run the live pipeline.")
 else:
+    size_mb = uploaded.size / 1_000_000
+    if MAX_UPLOAD_MB and size_mb > MAX_UPLOAD_MB:
+        st.warning(
+            f"This PDF is {size_mb:.0f} MB. The hosted demo caps uploads at "
+            f"{MAX_UPLOAD_MB} MB, because a large annual report can exhaust this "
+            "free tier's memory mid-extraction. Click **Try a sample** above for a "
+            "full result, or run the app locally (`streamlit run app.py`) for "
+            "full-size files — there's no limit there."
+        )
+        st.stop()
     with st.spinner("Profiling → locating statements → extracting → validating…"):
         try:
             metrics, excel_bytes = extract(uploaded.getvalue(), uploaded.name)
