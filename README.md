@@ -8,6 +8,28 @@ pulls out the key numbers, **proves each one is correct**, and writes a tidy
 Excel where every value carries its own receipt (page number, the exact label
 it came from, and which checks it passed).
 
+![FinAgent web demo — every extracted number shown with its status, page, and the accounting checks it passed](docs/demo.png)
+
+---
+
+## Try it in 30 seconds
+
+A web demo ([`app.py`](app.py)) wraps the exact same engine as the CLI, so it
+can never disagree with the tests.
+
+```powershell
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+Then either upload your own annual-report PDF, or click **▶ Try a sample —
+Bharti Airtel FY2024-25** for a precomputed result that renders instantly (no
+PDF needed, no 30-200s run). Every metric shows its status, the page it came
+from, and the accounting checks it passed or failed, plus a downloadable Excel.
+
+> The sample is a bundled JSON of the extracted *numbers* (facts from a public
+> report); the copyrighted PDF itself is never shipped.
+
 ---
 
 ## The one idea behind it
@@ -86,10 +108,13 @@ never hand over a confident-but-wrong number.
 ## Run it
 
 ```powershell
-# one report
+# web demo (upload a PDF or click the sample button)
+.venv\Scripts\streamlit run app.py
+
+# one report, on the command line
 .venv\Scripts\python.exe finagent_single.py test_pdfs\TCS_2024-2025.pdf
 
-# scorecard across all 12 test reports
+# scorecard across all test reports
 .venv\Scripts\python.exe benchmark.py
 ```
 
@@ -100,16 +125,15 @@ venv (`.venv`). First-time setup: `pip install -r requirements.txt`.
 
 ## Install a released build
 
-The project is packaged as a wheel and published on a version tag. Grab a
-build from the [Releases page](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/releases)
-and install it:
+The project is published on PyPI (the distribution name is `akshu-finagent`;
+the import name stays `finagent`):
 
 ```powershell
-pip install finagent-0.1.0-py3-none-any.whl
+pip install akshu-finagent
 ```
 
-(TestPyPI publishing via OIDC trusted publishing is being wired up — once live,
-`pip install -i https://test.pypi.org/simple/ finagent` will work directly.)
+Each `vX.Y.Z` tag also builds the wheel + sdist and attaches them to a
+[GitHub Release](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/releases).
 
 ---
 
@@ -168,18 +192,19 @@ file is a flattened, portable build of it.
 ## What's in this folder
 
 ```
+app.py               Streamlit web demo (upload a PDF or load the sample)
 finagent_single.py   the whole agent in one file (start here to understand it)
 finagent/            the same logic as a package, one file per stage
-schema is shared     ── the vocabulary every stage speaks
 benchmark.py         scorecard over every test PDF
 golden_check.py      checks extracted values against hand-verified answers
 render_pages.py      renders statement pages to PNGs (for eyeballing)
-requirements.txt     dependencies: pypdf, pdfplumber, rapidfuzz, openpyxl
-test_pdfs/           12 deliberately-different real annual reports
+requirements.txt     dependencies: pypdf, pdfplumber, rapidfuzz, openpyxl, streamlit
+samples/             precomputed result the demo's sample button loads
+test_pdfs/           deliberately-different real annual reports (gitignored; add your own)
 golden/              hand-verified correct answers for grading
-output/              generated Excel files + rendered pages
-scratch/             throwaway debug scripts (safe to ignore)
-graphify-out/        generated knowledge-graph cache (safe to ignore)
+experiments/         one-off benchmark/comparison scripts (not part of the pipeline)
+docs/                architecture notes, diagrams, and the demo screenshot
+output/              generated Excel files + rendered pages (gitignored)
 ```
 
 ### The test set (chosen to break things on purpose)
