@@ -19,7 +19,9 @@ from enum import Enum
 from pathlib import Path
 from statistics import median
 import contextlib
+import json
 import os
+import urllib.request
 from contextlib import contextmanager
 from typing import Optional, List, Dict, Tuple, Any
 
@@ -1409,6 +1411,25 @@ def _label_matches(label):
     return [(m, s)] if m else []
 
 
+def item_values(item):
+    """A raw line's numeric columns, left to right, with note-reference and
+    page-reference columns stripped. values[0] is the current year.
+    Shared by the rule matcher and the LLM fallback, so a line picked by
+    either is parsed exactly the same way."""
+    toks = list(item.values)
+    note_stripped = False
+    if toks and _looks_like_note_ref(toks[0], toks[1:], item.label):
+        toks = toks[1:]
+        note_stripped = True
+    # second reference column: a Page cross-ref (Note + Page columns,
+    # BHEL). Only after a note ref was stripped — the double-column
+    # signature — so single-reference statements are untouched.
+    if note_stripped and len(toks) >= 2 and _looks_like_page_ref(toks[0], toks[1]):
+        toks = toks[1:]
+    values = [parse_number(t) for t in toks]
+    return [v for v in values if v is not None]
+
+
 def normalize(raw_items, allowed_metrics=None):
     """RawItems -> best Extraction per canonical metric."""
     by_metric = {}
@@ -1423,18 +1444,7 @@ def normalize(raw_items, allowed_metrics=None):
             want_side = METRICS[metric].get("side")
             if want_side and getattr(item, "side", None) not in (None, want_side):
                 continue
-            toks = list(item.values)
-            note_stripped = False
-            if toks and _looks_like_note_ref(toks[0], toks[1:], item.label):
-                toks = toks[1:]
-                note_stripped = True
-            # second reference column: a Page cross-ref (Note + Page columns,
-            # BHEL). Only after a note ref was stripped — the double-column
-            # signature — so single-reference statements are untouched.
-            if note_stripped and len(toks) >= 2 and _looks_like_page_ref(toks[0], toks[1]):
-                toks = toks[1:]
-            values = [parse_number(t) for t in toks]
-            values = [v for v in values if v is not None]
+            values = item_values(item)
             if not values:
                 continue
             ext = Extraction(
@@ -1662,6 +1672,208 @@ class ValidationReport:
             }
             for m, v in self.verdicts.items()
         }
+
+
+# =============================================================================
+
+# LLM FALLBACK (from finagent/llm_fallback.py)
+
+# =============================================================================
+
+LLM_SOURCE = "llm"
+STATEMENT_NAMES = {
+    "BS": "balance sheet",
+    "PL": "profit and loss statement",
+    "CF": "cash flow statement",
+}
+
+# check name -> every metric that takes part in it
+_CHECK_MEMBERS = {name: set(lhs) | set(rhs) | set(opt) for name, lhs, rhs, opt in IDENTITY_CHECKS}
+_CHECK_MEMBERS.update({name: {a, b} for name, a, b in CROSS_STATEMENT_CHECKS})
+
+
+# ---------------------------------------------------------------------------
+# The model, behind a one-method interface (tests inject a fake)
+# ---------------------------------------------------------------------------
+def build_prompt(metric, statement, lines):
+    hints = ", ".join(f'"{s}"' for s in METRICS[metric].get("synonyms", [])[:4])
+    numbered = "\n".join(
+        f"[{i}] {label} | {' | '.join(vals)}" for i, (label, vals) in enumerate(lines)
+    )
+    return (
+        f"These are the lines of a company's {STATEMENT_NAMES[statement]} "
+        f"(label | numbers, current year first).\n\n{numbered}\n\n"
+        f"Which ONE line is the metric `{metric}` (usually labelled like {hints})? "
+        "Labels may carry roman numerals, formula suffixes like (VII-VIII), or typos. "
+        "If the report splits continuing and discontinued operations, prefer the total "
+        "for the whole year. If no line clearly is this metric, answer null. "
+        'Reply with JSON only: {"line_id": <integer or null>}'
+    )
+
+
+def parse_line_id(text, n_lines):
+    """Model output -> a valid line index, or None. Anything malformed is None."""
+    try:
+        line_id = json.loads(text).get("line_id")
+    except (ValueError, AttributeError):
+        return None
+    if isinstance(line_id, bool) or not isinstance(line_id, int):
+        return None
+    return line_id if 0 <= line_id < n_lines else None
+
+
+def _post_json(url, payload, headers, timeout=30):
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json", **headers},
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read())
+
+
+class GeminiChooser:
+    def __init__(self, api_key, model=None):
+        self.api_key, self.model = api_key, model or "gemini-2.5-flash"
+
+    def choose(self, metric, statement, lines):
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{self.model}:generateContent?key={self.api_key}"
+        )
+        payload = {
+            "contents": [{"parts": [{"text": build_prompt(metric, statement, lines)}]}],
+            "generationConfig": {
+                "temperature": 0,
+                "responseMimeType": "application/json",
+                "responseSchema": {
+                    "type": "OBJECT",
+                    "properties": {"line_id": {"type": "INTEGER", "nullable": True}},
+                    "required": ["line_id"],
+                },
+            },
+        }
+        out = _post_json(url, payload, {})
+        text = out["candidates"][0]["content"]["parts"][0]["text"]
+        return parse_line_id(text, len(lines))
+
+
+class GroqChooser:
+    def __init__(self, api_key, model=None):
+        self.api_key, self.model = api_key, model or "llama-3.3-70b-versatile"
+
+    def choose(self, metric, statement, lines):
+        payload = {
+            "model": self.model,
+            "temperature": 0,
+            "response_format": {"type": "json_object"},
+            "messages": [{"role": "user", "content": build_prompt(metric, statement, lines)}],
+        }
+        out = _post_json(
+            "https://api.groq.com/openai/v1/chat/completions",
+            payload,
+            {"Authorization": f"Bearer {self.api_key}"},
+        )
+        return parse_line_id(out["choices"][0]["message"]["content"], len(lines))
+
+
+def chooser_from_env():
+    """The configured chooser, or None (fallback off)."""
+    provider = os.getenv("FINAGENT_LLM_PROVIDER", "").strip().lower()
+    model = os.getenv("FINAGENT_LLM_MODEL") or None
+    if provider == "gemini" and os.getenv("GEMINI_API_KEY"):
+        return GeminiChooser(os.environ["GEMINI_API_KEY"], model)
+    if provider == "groq" and os.getenv("GROQ_API_KEY"):
+        return GroqChooser(os.environ["GROQ_API_KEY"], model)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Propose -> verify -> accept
+# ---------------------------------------------------------------------------
+def _validate(observations, candidates, expected):
+    v = Validator(expected_metrics=expected)
+    for metric, value, source, page, label in observations:
+        v.add(metric, value, source=source, page=page, label_text=label)
+    for metric, (value, page, label) in candidates.items():
+        v.add(metric, value, source=LLM_SOURCE, page=page, label_text=label)
+    return v.validate()
+
+
+def _proven_by_rules(verdict, rule_metrics):
+    """VERIFIED by at least one check that involves a rule-extracted value."""
+    if verdict.status != Status.VERIFIED:
+        return False
+    for detail in verdict.checks_passed:
+        members = _CHECK_MEMBERS.get(detail.split(" (")[0], set())
+        if (members - {verdict.metric}) & rule_metrics:
+            return True
+    return False
+
+
+def fill_missing(observations, raw_by_statement, expected, chooser, log=print):
+    """Try to fill MISSING metrics. Returns (ValidationReport, accepted) where
+    accepted maps metric -> (value, page, label) for every proposal kept.
+
+    observations: [(metric, value, source, page, label)] from the rules
+    raw_by_statement: {"BS"/"PL"/"CF": [RawItem, ...]} lines of located pages
+    """
+    baseline = _validate(observations, {}, expected)
+    if chooser is None:
+        return baseline, {}
+
+    rule_metrics = {m for m, *_ in observations}
+    used_labels = {label for *_, label in observations}
+    candidates = {}
+    for code, items in raw_by_statement.items():
+        lines = [(it, item_values(it)) for it in items if it.label not in used_labels]
+        lines = [(it, vals) for it, vals in lines if vals]
+        if not lines:
+            continue
+        shown = [(it.label, [f"{v:,.2f}" for v in vals]) for it, vals in lines]
+        for metric in expected:
+            if METRICS[metric]["statement"] != code:
+                continue
+            if baseline.verdicts[metric].status != Status.MISSING:
+                continue
+            try:
+                line_id = chooser.choose(metric, code, shown)
+            except Exception as e:  # noqa: BLE001 — a model failure must never fail the run
+                log(f"[llm] {metric}: provider error ({e.__class__.__name__}), stays MISSING")
+                continue
+            if line_id is None:
+                continue
+            item, vals = lines[line_id]
+            candidates[metric] = (vals[0], item.page, item.label)
+            log(f"[llm] {metric}: proposed line '{item.label}' = {vals[0]:,.2f}")
+
+    # Drop unproven proposals until the set is stable: removing one proposal can
+    # change which others still verify.
+    while candidates:
+        report = _validate(observations, candidates, expected)
+        rejected = [m for m in candidates if not _proven_by_rules(report.verdicts[m], rule_metrics)]
+        if not rejected:
+            break
+        for m in rejected:
+            log(f"[llm] {m}: rejected, no accounting identity confirms it")
+            del candidates[m]
+    if not candidates:
+        return baseline, {}
+
+    # Never let a proposal break a value the rules had already found.
+    report = _validate(observations, candidates, expected)
+    newly_flagged = [
+        m
+        for m in rule_metrics
+        if report.verdicts[m].status == Status.FLAGGED
+        and baseline.verdicts[m].status != Status.FLAGGED
+    ]
+    if newly_flagged:
+        log(f"[llm] proposals would flag rule values {newly_flagged}; all rejected")
+        return baseline, {}
+    for m in candidates:
+        log(f"[llm] {m}: ACCEPTED, verified by accounting identity")
+    return report, candidates
 
 
 # =============================================================================
@@ -2026,12 +2238,11 @@ def flush_tracing() -> None:
 
 # =============================================================================
 
-def _extract_basis(pdf_path, locations, log, label):
-    """Run extract -> normalize -> validate -> derive for one set of statement
-    locations (one basis). Returns (report, {metric: Extraction})."""
+def _extract_basis(pdf_path, locations, log, label, chooser=None):
+    """Run extract -> normalize -> validate (+ LLM fallback) -> derive for one
+    set of statement locations (one basis). Returns (report, {metric: Extraction})."""
 
-    v = Validator(expected_metrics=EXPECTED_METRICS)
-    all_extractions = {}
+    observations, all_extractions, raw_by_statement = [], {}, {}
     for code, loc in locations.items():
         if not loc.page_indices:
             continue
@@ -2041,15 +2252,29 @@ def _extract_basis(pdf_path, locations, log, label):
             cue_pats=locator.STATEMENT_SIGNATURES[code][1],
             want_basis=label,
         )
+        raw_by_statement[code] = raw
         extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
         log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
         for metric, ext in extractions.items():
             if METRICS[metric]["statement"] != code and metric in all_extractions:
                 continue
             all_extractions[metric] = ext
-            v.add(metric, ext.value, source=ext.source, page=ext.page, label_text=ext.raw_label)
+            observations.append((metric, ext.value, ext.source, ext.page, ext.raw_label))
 
-    report = derive(v.validate())
+    validation, accepted = fill_missing(
+        observations, raw_by_statement, EXPECTED_METRICS, chooser, log=log
+    )
+    for metric, (value, page, raw_label) in accepted.items():
+        all_extractions[metric] = Extraction(
+            metric=metric,
+            value=value,
+            raw_label=raw_label,
+            page=page,
+            source=LLM_SOURCE,
+            score=0.0,
+            extra_values=[],
+        )
+    report = derive(validation)
     return report, all_extractions
 
 
@@ -2057,7 +2282,12 @@ def _sheet_name(basis):
     return {"consolidated": "Consolidated", "standalone": "Standalone"}.get(basis, "Financials")
 
 
-def run(pdf_path, out_path=None, verbose=True):
+def run(pdf_path, out_path=None, verbose=True, chooser="env"):
+    """chooser: the LLM fallback for MISSING metrics. "env" (default) reads
+    FINAGENT_LLM_PROVIDER; None turns it off; tests pass a fake."""
+    if chooser == "env":
+
+        chooser = chooser_from_env()
     pdf_path = Path(pdf_path)
     t0 = time.time()
 
@@ -2113,7 +2343,7 @@ def run(pdf_path, out_path=None, verbose=True):
         primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
         primary_label = _sheet_name(primary_basis).lower()
         with trace_span(f"extract_basis_{primary_label}", kind="tool"):
-            report, primary_ext = _extract_basis(pdf_path, primary, log, primary_label)
+            report, primary_ext = _extract_basis(pdf_path, primary, log, primary_label, chooser)
         if verbose:
             report.print_summary()
 
@@ -2125,7 +2355,7 @@ def run(pdf_path, out_path=None, verbose=True):
                 else "standalone"
             )
             with trace_span(f"extract_basis_{alt_basis}", kind="tool"):
-                alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, alt_basis)
+                alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, alt_basis, chooser)
             sheets.append((_sheet_name(alt_basis), alt_report.to_dict(), alt_ext))
 
             # Build Side-by-Side Comparison dict

@@ -33,7 +33,9 @@ from enum import Enum
 from pathlib import Path
 from statistics import median
 import contextlib
+import json
 import os
+import urllib.request
 from contextlib import contextmanager
 from typing import Optional, List, Dict, Tuple, Any
 
@@ -111,6 +113,7 @@ def bundle() -> str:
         ("GEOMETRIC EXTRACTOR", PACKAGE_DIR / "extractors" / "geometric.py"),
         ("NORMALIZER", PACKAGE_DIR / "normalizer.py"),
         ("VALIDATOR", PACKAGE_DIR / "validator.py"),
+        ("LLM FALLBACK", PACKAGE_DIR / "llm_fallback.py"),
         ("DERIVER", PACKAGE_DIR / "deriver.py"),
         ("WRITER", PACKAGE_DIR / "writer.py"),
         ("TRACING", PACKAGE_DIR / "tracing.py"),

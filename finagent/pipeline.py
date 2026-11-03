@@ -11,16 +11,16 @@ from . import locator, normalizer, profiler, unit_detector
 from .extractors import geometric
 from .schema import EXPECTED_METRICS, METRICS, metrics_for_statement
 from .tracing import flush_tracing, trace_span, wrap_agent
-from .validator import Validator
 
 
-def _extract_basis(pdf_path, locations, log, label):
-    """Run extract -> normalize -> validate -> derive for one set of statement
-    locations (one basis). Returns (report, {metric: Extraction})."""
+def _extract_basis(pdf_path, locations, log, label, chooser=None):
+    """Run extract -> normalize -> validate (+ LLM fallback) -> derive for one
+    set of statement locations (one basis). Returns (report, {metric: Extraction})."""
     from .deriver import derive
+    from .llm_fallback import LLM_SOURCE, fill_missing
+    from .normalizer import Extraction
 
-    v = Validator(expected_metrics=EXPECTED_METRICS)
-    all_extractions = {}
+    observations, all_extractions, raw_by_statement = [], {}, {}
     for code, loc in locations.items():
         if not loc.page_indices:
             continue
@@ -30,15 +30,29 @@ def _extract_basis(pdf_path, locations, log, label):
             cue_pats=locator.STATEMENT_SIGNATURES[code][1],
             want_basis=label,
         )
+        raw_by_statement[code] = raw
         extractions = normalizer.normalize(raw, allowed_metrics=set(metrics_for_statement(code)))
         log(f"[extract:{label}] {code}: {len(raw)} lines -> {len(extractions)} metrics matched")
         for metric, ext in extractions.items():
             if METRICS[metric]["statement"] != code and metric in all_extractions:
                 continue
             all_extractions[metric] = ext
-            v.add(metric, ext.value, source=ext.source, page=ext.page, label_text=ext.raw_label)
+            observations.append((metric, ext.value, ext.source, ext.page, ext.raw_label))
 
-    report = derive(v.validate())
+    validation, accepted = fill_missing(
+        observations, raw_by_statement, EXPECTED_METRICS, chooser, log=log
+    )
+    for metric, (value, page, raw_label) in accepted.items():
+        all_extractions[metric] = Extraction(
+            metric=metric,
+            value=value,
+            raw_label=raw_label,
+            page=page,
+            source=LLM_SOURCE,
+            score=0.0,
+            extra_values=[],
+        )
+    report = derive(validation)
     return report, all_extractions
 
 
@@ -46,7 +60,13 @@ def _sheet_name(basis):
     return {"consolidated": "Consolidated", "standalone": "Standalone"}.get(basis, "Financials")
 
 
-def run(pdf_path, out_path=None, verbose=True):
+def run(pdf_path, out_path=None, verbose=True, chooser="env"):
+    """chooser: the LLM fallback for MISSING metrics. "env" (default) reads
+    FINAGENT_LLM_PROVIDER; None turns it off; tests pass a fake."""
+    if chooser == "env":
+        from .llm_fallback import chooser_from_env
+
+        chooser = chooser_from_env()
     pdf_path = Path(pdf_path)
     t0 = time.time()
 
@@ -102,7 +122,7 @@ def run(pdf_path, out_path=None, verbose=True):
         primary_basis = primary["BS"].basis if primary.get("BS") else "unknown"
         primary_label = _sheet_name(primary_basis).lower()
         with trace_span(f"extract_basis_{primary_label}", kind="tool"):
-            report, primary_ext = _extract_basis(pdf_path, primary, log, primary_label)
+            report, primary_ext = _extract_basis(pdf_path, primary, log, primary_label, chooser)
         if verbose:
             report.print_summary()
 
@@ -114,7 +134,7 @@ def run(pdf_path, out_path=None, verbose=True):
                 else "standalone"
             )
             with trace_span(f"extract_basis_{alt_basis}", kind="tool"):
-                alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, alt_basis)
+                alt_report, alt_ext = _extract_basis(pdf_path, alternate, log, alt_basis, chooser)
             sheets.append((_sheet_name(alt_basis), alt_report.to_dict(), alt_ext))
 
             # Build Side-by-Side Comparison dict
