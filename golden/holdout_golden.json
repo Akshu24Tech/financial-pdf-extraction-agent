@@ -1,0 +1,90 @@
+{
+ "_meta": {
+  "status": "FILLED 2026-11-03. Read by Claude from rendered page images (pypdfium2, 3x), with accounting identities cross-checked per statement. NOT fully independent: the reader had seen FinAgent's blind output before reading. Owner should spot-check before treating as final.",
+  "method": [
+   "Read every value from the PDF PAGE ITSELF (zoom in). Never copy from FinAgent's output or the blind-run JSON: the golden must be independent of the thing it grades.",
+   "Consolidated statements, current-year column only.",
+   "Number exactly as printed, in the report's own unit: commas removed, brackets -> negative. e.g. '(9,812.40)' -> -9812.4",
+   "Cross-check while reading: total assets = total equity and liabilities; closing cash on the cash-flow statement vs balance-sheet cash. If an identity fails, re-read before writing.",
+   "If a metric is genuinely not printed (e.g. a bank has no profit-before-tax line), set \"value\": null and \"not_printed\": true. Then MISSING counts as correct.",
+   "Ambiguous variants (continuing vs discontinued operations, before/after minority interest): pick the total for the year, and write which line you used in \"label\" plus a \"note\".",
+   "Fill \"page\" with the 1-based PDF page number you read it from."
+  ]
+ },
+ "BSE-Annual-Report.pdf": {
+  "unit": "INR lakh",
+  "basis": "consolidated",
+  "period": "FY ended 2026-03-31",
+  "metrics": {
+   "total_assets": {"value": 1344614, "page": 162, "label": "Total assets (1+2)"},
+   "total_equity": {"value": 679550, "page": 162, "label": "Total equity", "note": "includes NCI 12,249; core settlement guarantee fund 1,24,683 is a separate block, neither equity nor liabilities"},
+   "cash_and_equivalents": {"value": 167159, "page": 162, "label": "Cash and cash equivalents"},
+   "revenue": {"value": 483395, "page": 163, "label": "Revenue from operations"},
+   "other_income": {"value": 2385, "page": 163, "label": "Other income", "note": "a THIRD income line 'Investment income' 29,030 also exists"},
+   "total_income": {"value": 514810, "page": 163, "label": "Total income", "note": "= 4,83,395 + 29,030 + 2,385"},
+   "total_expenses": {"value": 183742, "page": 163, "label": "Total expenses"},
+   "profit_before_tax": {"value": 329914, "page": 163, "label": "Profit before tax (5+6)", "note": "continuing operations"},
+   "tax_expense": {"value": 82384, "page": 163, "label": "Total tax expenses"},
+   "net_profit": {"value": 248725, "page": 163, "label": "Net profit for the year from total operation (9+10)", "note": "continuing 2,47,530 + discontinued 1,195"},
+   "cash_from_operations": {"value": 310368, "page": 164, "label": "Net cash generated from operating activities", "note": "continuing operations; discontinued adds 4"},
+   "closing_cash": {"value": 164642, "page": 165, "label": "Cash and cash equivalents at the end of the year", "note": "= BS cash 1,67,159 less earmarked balances (reconciled on p165)"}
+  }
+ },
+ "Hindustan Unilever.pdf": {
+  "unit": "INR crore",
+  "basis": "consolidated",
+  "period": "FY ended 2026-03-31",
+  "metrics": {
+   "total_assets": {"value": 79752, "page": 183, "label": "TOTAL ASSETS (A+B)", "note": "PDF page is a two-page spread (printed pp. 362-363)"},
+   "total_equity": {"value": 49008, "page": 183, "label": "Total - Equity (A)", "note": "includes non-controlling interests 269"},
+   "cash_and_equivalents": {"value": 2583, "page": 183, "label": "Cash and cash equivalents"},
+   "revenue": {"value": 64468, "page": 184, "label": "Revenue from operations"},
+   "other_income": {"value": 751, "page": 184, "label": "Other income"},
+   "total_income": {"value": 65219, "page": 184, "label": "TOTAL INCOME"},
+   "total_expenses": {"value": 51157, "page": 184, "label": "TOTAL EXPENSES"},
+   "profit_before_tax": {"value": 13812, "page": 184, "label": "Profit before tax from continuing operations", "note": "no total PBT incl. discontinued ops is printed; continuing used"},
+   "tax_expense": {"value": 3160, "page": 184, "label": "Tax expenses: Current tax (3,163) + Deferred tax credit 3", "note": "no total tax line printed; sum of the two printed components (13,812 - 3,160 = 10,652 ties)"},
+   "net_profit": {"value": 15059, "page": 184, "label": "PROFIT FOR THE YEAR (C=A+B)", "note": "continuing 10,652 + discontinued 4,407"},
+   "cash_from_operations": {"value": 10999, "page": 186, "label": "Net cash flows generated from operating activities - [A]"},
+   "closing_cash": {"value": 2583, "page": 186, "label": "Cash and cash equivalents at the end of the year", "note": "ties to BS"}
+  }
+ },
+ "ICICI Bank FY2024-25.pdf": {
+  "unit": "INR thousand ('000s)",
+  "basis": "consolidated",
+  "period": "FY ended 2025-03-31",
+  "metrics": {
+   "total_assets": {"value": 26422414134, "page": 265, "label": "TOTAL ASSETS"},
+   "total_equity": {"value": null, "not_printed": true, "note": "bank format: no total-equity line. Capital 14,245,974 + ESOP 20,698,433 + Reserves 3,104,114,654 (+ minority 148,367,361) printed separately"},
+   "cash_and_equivalents": {"value": null, "not_printed": true, "note": "bank format: split into 'Cash and balances with RBI' 1,202,409,132 and 'Balances with banks and money at call' 937,825,505; sum = CF closing cash"},
+   "revenue": {"value": 1863314641, "page": 266, "label": "Interest earned", "note": "bank-format equivalent of revenue (same convention as HDFC golden)"},
+   "other_income": {"value": 1082554702, "page": 266, "label": "Other income"},
+   "total_income": {"value": 2945869343, "page": 266, "label": "TOTAL INCOME"},
+   "total_expenses": {"value": 2401682209, "page": 266, "label": "TOTAL EXPENDITURE", "note": "includes provisions and contingencies (which include tax)"},
+   "profit_before_tax": {"value": null, "not_printed": true, "note": "bank format: no PBT line; tax sits inside provisions and contingencies"},
+   "tax_expense": {"value": null, "not_printed": true, "note": "not on the face of the P&L"},
+   "net_profit": {"value": 545693756, "page": 266, "label": "Net profit for the year before deducting minority interest", "note": "attributable to Group: 510,291,955"},
+   "cash_from_operations": {"value": 1228052582, "page": 267, "label": "Net cash flow from/(used in) operating activities (i)+(ii)+(iii) (A)"},
+   "closing_cash": {"value": 2140234637, "page": 268, "label": "Cash and cash equivalents at end of the year", "note": "= RBI 1,202,409,132 + banks 937,825,505"}
+  }
+ },
+ "Shivalik Bimetal Controls.pdf": {
+  "unit": "INR lakh",
+  "basis": "consolidated",
+  "period": "FY ended 2026-03-31",
+  "metrics": {
+   "total_assets": {"value": 63597.7, "page": 182, "label": "TOTAL ASSETS"},
+   "total_equity": {"value": 48134.72, "page": 182, "label": "Total Equity"},
+   "cash_and_equivalents": {"value": 698.4, "page": 182, "label": "Cash and Cash Equivalents"},
+   "revenue": {"value": 57086.07, "page": 183, "label": "I Revenue from operations"},
+   "other_income": {"value": 1227.28, "page": 183, "label": "II Other Income"},
+   "total_income": {"value": 58313.35, "page": 183, "label": "III Total Income (I + II)"},
+   "total_expenses": {"value": 45864.81, "page": 183, "label": "Total expenses"},
+   "profit_before_tax": {"value": 12691.86, "page": 183, "label": "IX Profit before tax (VII-VIII)"},
+   "tax_expense": {"value": 3106.01, "page": 183, "label": "Total Tax expense"},
+   "net_profit": {"value": 9585.85, "page": 183, "label": "XI Profit for the years (IX-X)", "note": "'years' is a typo in the report itself"},
+   "cash_from_operations": {"value": 5488.62, "page": 184, "label": "Net Cash generated from Operating Activities (A)"},
+   "closing_cash": {"value": 698.4, "page": 184, "label": "Cash and Cash equivalents at the closing of year", "note": "ties to BS cash 698.40"}
+  }
+ }
+}
