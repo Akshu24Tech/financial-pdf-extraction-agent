@@ -177,13 +177,15 @@ def _statement_page(c, title, rows):
     c.showPage()
 
 
-def make_report(path, overrides=None):
-    """Write the 4-page synthetic report. `overrides` maps a printed label to a
-    replacement current-year value, used to plant a deliberate error."""
-    overrides = overrides or {}
+def make_report(path, overrides=None, relabel=None, extra_pl_rows=None):
+    """Write the 4-page synthetic report.
+    overrides: printed label -> replacement current-year value (plant an error)
+    relabel: printed label -> new label text (simulate a decorated label)
+    extra_pl_rows: extra (label, current, prior) rows appended to the P&L"""
+    overrides, relabel = overrides or {}, relabel or {}
 
     def apply(rows):
-        return [(lbl, overrides.get(lbl, cur), prior) for lbl, cur, prior in rows]
+        return [(relabel.get(lbl, lbl), overrides.get(lbl, cur), prior) for lbl, cur, prior in rows]
 
     c = canvas.Canvas(str(path), pagesize=A4)
     c.setFont("Helvetica", 11)
@@ -196,7 +198,7 @@ def make_report(path, overrides=None):
     _statement_page(
         c,
         "Consolidated Statement of Profit and Loss for the year ended 31 March 2025",
-        apply(PROFIT_AND_LOSS),
+        apply(PROFIT_AND_LOSS + (extra_pl_rows or [])),
     )
     _statement_page(
         c,

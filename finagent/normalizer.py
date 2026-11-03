@@ -175,6 +175,25 @@ def _label_matches(label):
     return [(m, s)] if m else []
 
 
+def item_values(item):
+    """A raw line's numeric columns, left to right, with note-reference and
+    page-reference columns stripped. values[0] is the current year.
+    Shared by the rule matcher and the LLM fallback, so a line picked by
+    either is parsed exactly the same way."""
+    toks = list(item.values)
+    note_stripped = False
+    if toks and _looks_like_note_ref(toks[0], toks[1:], item.label):
+        toks = toks[1:]
+        note_stripped = True
+    # second reference column: a Page cross-ref (Note + Page columns,
+    # BHEL). Only after a note ref was stripped — the double-column
+    # signature — so single-reference statements are untouched.
+    if note_stripped and len(toks) >= 2 and _looks_like_page_ref(toks[0], toks[1]):
+        toks = toks[1:]
+    values = [parse_number(t) for t in toks]
+    return [v for v in values if v is not None]
+
+
 def normalize(raw_items, allowed_metrics=None):
     """RawItems -> best Extraction per canonical metric."""
     by_metric = {}
@@ -189,18 +208,7 @@ def normalize(raw_items, allowed_metrics=None):
             want_side = METRICS[metric].get("side")
             if want_side and getattr(item, "side", None) not in (None, want_side):
                 continue
-            toks = list(item.values)
-            note_stripped = False
-            if toks and _looks_like_note_ref(toks[0], toks[1:], item.label):
-                toks = toks[1:]
-                note_stripped = True
-            # second reference column: a Page cross-ref (Note + Page columns,
-            # BHEL). Only after a note ref was stripped — the double-column
-            # signature — so single-reference statements are untouched.
-            if note_stripped and len(toks) >= 2 and _looks_like_page_ref(toks[0], toks[1]):
-                toks = toks[1:]
-            values = [parse_number(t) for t in toks]
-            values = [v for v in values if v is not None]
+            values = item_values(item)
             if not values:
                 continue
             ext = Extraction(
