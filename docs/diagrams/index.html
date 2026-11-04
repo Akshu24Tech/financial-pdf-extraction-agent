@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Financial_v2 — Architecture Diagrams</title>
+<style>
+  body{margin:0;background:#0f172a;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif}
+  header{padding:40px 48px 24px}
+  h1{margin:0 0 6px;font-size:30px;color:#f8fafc}
+  p.sub{margin:0;color:#94a3b8;font-size:16px}
+  nav{padding:0 48px 24px;display:flex;flex-wrap:wrap;gap:8px}
+  nav a{font-size:13px;color:#cbd5e1;background:#1e293b;border:1px solid #334155;
+        padding:6px 12px;border-radius:999px;text-decoration:none}
+  nav a:hover{background:#334155;color:#fff}
+  .card{margin:0 48px 32px;background:#f8fafc;border-radius:16px;overflow:hidden;
+        box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .card h2{margin:0;padding:16px 24px;font-size:16px;color:#0f172a;background:#e2e8f0;
+           border-bottom:1px solid #cbd5e1}
+  .card h2 span{color:#64748b;font-weight:400}
+  .card object{display:block;width:100%;height:auto}
+  footer{padding:16px 48px 48px;color:#64748b;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Financial PDF Extraction Agent — Architecture</h1>
+  <p class="sub">Whole-project view plus one diagram per pipeline stage. Each is a standalone SVG in this folder.</p>
+</header>
+<nav id="nav"></nav>
+<main id="gallery"></main>
+<footer>Vector SVGs — zoom in as far as you like, the text stays sharp. See README.md for PNG conversion.</footer>
+<script>
+  const diagrams = [
+    ["00-whole-project.svg", "00 · Whole project", "PDF in → proven metrics out"],
+    ["01-profiler.svg", "01 · Profiler", "describe every page"],
+    ["02-geometry.svg", "02 · Geometry", "split two-up A3 sheets"],
+    ["03-locator.svg", "03 · Locator", "find BS / PL / CF"],
+    ["04-extractor.svg", "04 · Extractor", "rebuild borderless rows"],
+    ["05-normalizer.svg", "05 · Normalizer", "clean & name the numbers"],
+    ["06-validator.svg", "06 · Validator", "prove with accounting maths"],
+    ["07-deriver.svg", "07 · Deriver", "fill what the identities pin down"],
+    ["08-writer.svg", "08 · Writer", "Excel with receipts"],
+    ["09-pipeline.svg", "09 · Pipeline", "the conductor"],
+    ["10-unit-detector.svg", "10 · Unit & Period", "scale, currency, periods"],
+    ["11-llm-fallback.svg", "11 · LLM fallback", "propose → validate → accept"],
+  ];
+  const nav = document.getElementById("nav");
+  const gallery = document.getElementById("gallery");
+  diagrams.forEach(([file, title, sub], i) => {
+    const id = "d" + i;
+    const a = document.createElement("a");
+    a.href = "#" + id; a.textContent = title; nav.appendChild(a);
+    const card = document.createElement("section");
+    card.className = "card"; card.id = id;
+    card.innerHTML = `<h2>${title} &nbsp;<span>— ${sub}</span></h2>
+      <object type="image/svg+xml" data="${file}"></object>`;
+    gallery.appendChild(card);
+  });
+</script>
+</body>
+</html>

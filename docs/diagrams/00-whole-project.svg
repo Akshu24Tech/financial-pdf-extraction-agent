@@ -1,0 +1,156 @@
+<svg viewBox="0 0 1280 1560" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arr" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title{font-size:34px;font-weight:700;fill:#0f172a}
+      .sub{font-size:16px;fill:#475569}
+      .stage{font-size:19px;font-weight:700;fill:#0f172a}
+      .num{font-size:13px;font-weight:700;fill:#ffffff}
+      .role{font-size:13.5px;fill:#334155}
+      .obj{font-size:13px;font-weight:600;fill:#1e293b}
+      .objr{font-size:12px;fill:#64748b}
+      .band{font-size:14px;font-weight:700;letter-spacing:2px}
+      .cap{font-size:12.5px;fill:#64748b}
+      .io{font-size:16px;font-weight:700;fill:#ffffff}
+    </style>
+  </defs>
+
+  <rect width="1280" height="1560" fill="#f8fafc"/>
+
+  <!-- Header -->
+  <text x="60" y="64" class="title">Financial PDF Extraction Agent</text>
+  <text x="60" y="92" class="sub">A 600-page annual report in &#8594; 28 proven financial metrics out. Read the numbers, then prove them with accounting maths.</text>
+
+  <!-- READING band -->
+  <rect x="40" y="120" width="12" height="690" rx="6" fill="#3b82f6"/>
+  <text x="70" y="150" class="band" fill="#1d4ed8">READING &#183; stages 1&#8211;5 &#183; allowed to be imperfect</text>
+
+  <!-- PDF input -->
+  <rect x="520" y="168" width="240" height="56" rx="10" fill="#0f172a" filter="url(#sh)"/>
+  <text x="640" y="202" text-anchor="middle" class="io">&#128196;  PDF file</text>
+  <line x1="640" y1="224" x2="640" y2="262" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 1 Profiler -->
+  <rect x="360" y="264" width="560" height="96" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <circle cx="392" cy="296" r="15" fill="#3b82f6"/><text x="392" y="301" text-anchor="middle" class="num">1</text>
+  <text x="420" y="293" class="stage">Profiler  &#183;  profiler.py</text>
+  <text x="420" y="316" class="role">Describe every page: size, orientation, text, quality (OK / SUSPECT / EMPTY).</text>
+  <text x="420" y="338" class="role">Builds logical pages &#8212; runs the Geometry split inline.</text>
+
+  <!-- 1b unit detector (side) -->
+  <rect x="946" y="264" width="286" height="96" rx="12" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" filter="url(#sh)"/>
+  <text x="962" y="291" class="stage" font-size="16">1b  Unit &amp; Period</text>
+  <text x="962" y="312" class="objr">unit_detector.py</text>
+  <text x="962" y="334" class="role">Scale (Crores / Millions),</text>
+  <text x="962" y="352" class="role">currency, period columns.</text>
+
+  <!-- 2 Geometry (nested note) -->
+  <rect x="360" y="376" width="560" height="52" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <circle cx="392" cy="402" r="15" fill="#60a5fa"/><text x="392" y="407" text-anchor="middle" class="num">2</text>
+  <text x="420" y="398" class="stage" font-size="16">Geometry  &#183;  geometry.py</text>
+  <text x="420" y="418" class="role">Split two-up A3 sheets (Airtel/Reliance) into left + right logical pages.</text>
+
+  <text x="950" y="400" class="obj">&#8594; DocProfile</text>
+  <text x="950" y="420" class="objr">pages + logical_pages</text>
+
+  <line x1="640" y1="428" x2="640" y2="462" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 3 Locator -->
+  <rect x="360" y="464" width="560" height="96" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <circle cx="392" cy="496" r="15" fill="#3b82f6"/><text x="392" y="501" text-anchor="middle" class="num">3</text>
+  <text x="420" y="493" class="stage">Locator  &#183;  locator.py</text>
+  <text x="420" y="516" class="role">Of hundreds of pages, score &amp; find the Balance Sheet, P&amp;L and Cash Flow.</text>
+  <text x="420" y="538" class="role">Picks <tspan font-weight="700">primary</tspan> (consolidated) + <tspan font-weight="700">alternate</tspan> (standalone) so both get extracted.</text>
+  <text x="950" y="512" class="obj">&#8594; {BS, PL, CF}</text>
+  <text x="950" y="532" class="objr">page indices + basis</text>
+
+  <line x1="640" y1="560" x2="640" y2="598" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- per-basis loop wrapper -->
+  <rect x="330" y="600" width="620" height="208" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.6" stroke-dasharray="2 5"/>
+  <text x="352" y="624" class="cap" font-weight="700" fill="#475569">repeat per basis  &#183;  consolidated, then standalone</text>
+
+  <!-- 4 Extractor -->
+  <rect x="356" y="636" width="568" height="72" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <circle cx="388" cy="668" r="15" fill="#3b82f6"/><text x="388" y="673" text-anchor="middle" class="num">4</text>
+  <text x="416" y="665" class="stage">Extractor  &#183;  extractors/geometric.py</text>
+  <text x="416" y="688" class="role">Borderless tables &#8594; rebuild rows from word coordinates: label + raw numbers.</text>
+
+  <line x1="640" y1="708" x2="640" y2="730" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 5 Normalizer -->
+  <rect x="356" y="732" width="568" height="72" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <circle cx="388" cy="764" r="15" fill="#3b82f6"/><text x="388" y="769" text-anchor="middle" class="num">5</text>
+  <text x="416" y="761" class="stage">Normalizer  &#183;  normalizer.py</text>
+  <text x="416" y="784" class="role">Parse numbers, drop note/page refs, fuzzy-match each label to a canonical metric.</text>
+
+  <text x="978" y="700" class="obj">&#8594; {metric:</text>
+  <text x="978" y="720" class="obj">   Extraction}</text>
+
+  <!-- PROVING band -->
+  <rect x="40" y="826" width="12" height="600" rx="6" fill="#16a34a"/>
+  <text x="70" y="856" class="band" fill="#15803d">PROVING &#183; stages 6&#8211;6b &#183; makes the output trustworthy</text>
+
+  <line x1="640" y1="808" x2="640" y2="886" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 6a LLM fallback (optional, side) -->
+  <rect x="946" y="876" width="286" height="150" rx="12" fill="#faf5ff" stroke="#a855f7" stroke-width="2" filter="url(#sh)"/>
+  <text x="962" y="903" class="stage" font-size="16">6a  LLM fallback</text>
+  <text x="962" y="924" class="objr">llm_fallback.py &#183; optional</text>
+  <text x="962" y="948" class="role">For still-MISSING metrics:</text>
+  <text x="962" y="967" class="role">LLM picks a <tspan font-weight="700">line id</tspan>, never</text>
+  <text x="962" y="986" class="role">a number. Validator must</text>
+  <text x="962" y="1005" class="role">confirm it or it's dropped.</text>
+  <line x1="946" y1="951" x2="884" y2="951" stroke="#a855f7" stroke-width="2.2" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+
+  <!-- 6 Validator -->
+  <rect x="356" y="888" width="528" height="150" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#sh)"/>
+  <circle cx="388" cy="920" r="15" fill="#16a34a"/><text x="388" y="925" text-anchor="middle" class="num">6</text>
+  <text x="416" y="917" class="stage">Validator  &#183;  validator.py</text>
+  <text x="416" y="940" class="role">The paranoid clerk. Prove each number with accounting identities &amp; cross-</text>
+  <text x="416" y="959" class="role">statement ties (Assets = Liabilities + Equity, cash flow totals, &#8230;). No ground truth.</text>
+  <!-- verdict chips -->
+  <rect x="416" y="978" width="92" height="30" rx="6" fill="#C6EFCE"/><text x="462" y="998" text-anchor="middle" class="objr" fill="#14532d" font-weight="700">VERIFIED</text>
+  <rect x="514" y="978" width="92" height="30" rx="6" fill="#FFEB9C"/><text x="560" y="998" text-anchor="middle" class="objr" fill="#713f12" font-weight="700">PROBABLE</text>
+  <rect x="612" y="978" width="88" height="30" rx="6" fill="#FFC7CE"/><text x="656" y="998" text-anchor="middle" class="objr" fill="#7f1d1d" font-weight="700">FLAGGED</text>
+  <rect x="706" y="978" width="84" height="30" rx="6" fill="#D9D9D9"/><text x="748" y="998" text-anchor="middle" class="objr" fill="#334155" font-weight="700">MISSING</text>
+
+  <line x1="640" y1="1038" x2="640" y2="1076" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- 6b Deriver -->
+  <rect x="356" y="1078" width="528" height="96" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#sh)"/>
+  <circle cx="388" cy="1110" r="15" fill="#16a34a"/><text x="388" y="1115" text-anchor="middle" class="num">6b</text>
+  <text x="416" y="1107" class="stage">Deriver  &#183;  deriver.py</text>
+  <text x="416" y="1130" class="role">Fill MISSING values the trusted identities pin down exactly (algebra).</text>
+  <rect x="416" y="1144" width="84" height="26" rx="6" fill="#BDD7EE"/><text x="458" y="1162" text-anchor="middle" class="objr" fill="#1e3a5f" font-weight="700">DERIVED</text>
+  <text x="512" y="1162" class="role">&#8212; never VERIFIED (it satisfies its own identity).</text>
+
+  <line x1="640" y1="1174" x2="640" y2="1212" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- OUTPUT band -->
+  <rect x="40" y="1200" width="12" height="300" rx="6" fill="#7c3aed"/>
+  <text x="70" y="1230" class="band" fill="#6d28d9">OUTPUT &#183; stage 7 &#183; with receipts</text>
+
+  <!-- 7 Writer -->
+  <rect x="356" y="1214" width="528" height="86" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+  <circle cx="388" cy="1246" r="15" fill="#7c3aed"/><text x="388" y="1251" text-anchor="middle" class="num">7</text>
+  <text x="416" y="1243" class="stage">Writer  &#183;  writer.py</text>
+  <text x="416" y="1266" class="role">Excel where every value carries its receipt, colour-coded by trust level.</text>
+  <text x="416" y="1288" class="role">Sheets: Consolidated &#183; Standalone &#183; Side-by-Side comparison.</text>
+
+  <line x1="640" y1="1300" x2="640" y2="1338" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- Excel output -->
+  <rect x="500" y="1340" width="280" height="56" rx="10" fill="#15803d" filter="url(#sh)"/>
+  <text x="640" y="1374" text-anchor="middle" class="io">&#128202;  output/&lt;Company&gt;_metrics.xlsx</text>
+
+  <!-- conductor note -->
+  <rect x="90" y="1430" width="1100" height="70" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.6"/>
+  <text x="112" y="1458" class="stage" font-size="16" fill="#92400e">The conductor  &#183;  pipeline.py</text>
+  <text x="112" y="1482" class="role">Calls the stages in order and passes each output to the next. Wraps the whole run in OpenTelemetry tracing (tracing.py).</text>
+</svg>

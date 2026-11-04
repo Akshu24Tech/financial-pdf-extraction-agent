@@ -1,0 +1,71 @@
+<svg viewBox="0 0 1200 760" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arr" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title{font-size:32px;font-weight:700;fill:#0f172a}
+      .sub{font-size:16px;fill:#475569}
+      .stage{font-size:18px;font-weight:700;fill:#0f172a}
+      .fn{font-size:15px;font-weight:700;fill:#15803d;font-family:Consolas,'Courier New',monospace}
+      .role{font-size:13.5px;fill:#334155}
+      .io{font-size:15px;font-weight:700;fill:#ffffff}
+      .cap{font-size:12.5px;fill:#64748b}
+      .k{font-size:13px;font-weight:700;fill:#0f172a}
+      .mono{font-family:Consolas,'Courier New',monospace;font-size:13px;fill:#14532d}
+    </style>
+  </defs>
+  <rect width="1200" height="760" fill="#f8fafc"/>
+  <rect x="0" y="0" width="1200" height="8" fill="#16a34a"/>
+
+  <text x="56" y="62" class="title">Stage 6b &#183; Deriver  <tspan font-size="20" fill="#16a34a">deriver.py</tspan></text>
+  <text x="56" y="90" class="sub">Fill in numbers the report NEVER printed but the trusted identities pin down exactly. Runs AFTER validation &#8212; no feedback into the proofs.</text>
+
+  <!-- flow -->
+  <rect x="56" y="128" width="300" height="54" rx="10" fill="#D9D9D9" filter="url(#sh)"/>
+  <text x="206" y="161" text-anchor="middle" class="k" font-size="15" fill="#334155">a MISSING metric</text>
+  <line x1="356" y1="155" x2="402" y2="155" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <rect x="408" y="116" width="430" height="190" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#sh)"/>
+  <text x="428" y="144" class="fn">derive(report)</text>
+  <text x="428" y="168" class="role">1.  Gather formulas whose inputs are all</text>
+  <text x="448" y="186" class="role">present and <tspan class="k">trusted</tspan> (VERIFIED/PROBABLE).</text>
+  <text x="428" y="212" class="role">2.  Pick the one on the <tspan class="k">fewest unproven</tspan></text>
+  <text x="448" y="230" class="role">inputs (code order breaks ties).</text>
+  <text x="428" y="256" class="role">3.  Compute. If &#8804; 0 &#8594; discard (upstream</text>
+  <text x="448" y="274" class="role">corrupt), keep MISSING + log diagnostic.</text>
+  <text x="428" y="298" class="cap">single pass &#8212; derived values never feed other derivations</text>
+
+  <line x1="623" y1="306" x2="623" y2="338" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+  <rect x="470" y="340" width="306" height="52" rx="10" fill="#BDD7EE" filter="url(#sh)"/>
+  <text x="623" y="372" text-anchor="middle" class="k" font-size="15" fill="#1e3a5f">DERIVED verdict + formula receipt</text>
+
+  <!-- derivations sidebar -->
+  <rect x="888" y="116" width="256" height="276" rx="12" fill="#ecfdf5" stroke="#16a34a" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="908" y="142" class="k" font-size="14">DERIVATIONS</text>
+  <text x="908" y="162" class="cap">target &#8592; inputs, ordered</text>
+  <text x="908" y="190" class="mono">liabilities =</text>
+  <text x="922" y="208" class="mono">eq&amp;liab &#8722; equity</text>
+  <text x="908" y="234" class="mono">equity =</text>
+  <text x="922" y="252" class="mono">assets &#8722; liabilities</text>
+  <text x="908" y="278" class="mono">current_assets =</text>
+  <text x="922" y="296" class="mono">assets &#8722; non_current</text>
+  <text x="908" y="322" class="mono">total_expenses =</text>
+  <text x="922" y="340" class="mono">income &#8722; PBT</text>
+  <text x="908" y="372" class="cap">&#8230; several compete per target</text>
+
+  <!-- why -->
+  <rect x="56" y="430" width="1088" height="300" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.6"/>
+  <text x="78" y="458" class="stage" font-size="16" fill="#92400e">Why it&#39;s built this way</text>
+  <text x="78" y="490" class="role">&#8226;  <tspan class="k">DERIVED is never VERIFIED.</tspan>  A derived value satisfies its deriving identity by construction &#8212; re-checking it against the same</text>
+  <text x="78" y="510" class="role">   rule would be circular. Marking it DERIVED is honest about where it came from.</text>
+  <text x="78" y="542" class="role">&#8226;  <tspan class="k">Only VERIFIED or PROBABLE inputs</tspan> may feed a derivation. A FLAGGED input already failed a check; building on it spreads the error.</text>
+  <text x="78" y="574" class="role">&#8226;  <tspan class="k">No chaining</tspan> &#8212; derived values are never used as inputs to other derivations, so a mistake can&#39;t cascade (single pass).</text>
+  <text x="78" y="606" class="role">&#8226;  <tspan class="k">Positive-only guard</tspan> &#8212; these are all should-be-positive metrics; a zero/negative result signals a corrupt upstream read, so it&#39;s</text>
+  <text x="78" y="626" class="role">   left MISSING with a diagnostic rather than emitting a bad number.</text>
+  <text x="78" y="664" class="role">Example: Airtel&#39;s balance sheet prints no subtotal rows; BMW prints no total_liabilities. If the other terms are trusted, algebra</text>
+  <text x="78" y="684" class="role">gives the missing one exactly &#8212; a real value the report simply didn&#39;t spell out.</text>
+</svg>

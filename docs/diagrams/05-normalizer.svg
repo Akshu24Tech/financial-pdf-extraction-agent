@@ -1,0 +1,112 @@
+<svg viewBox="0 0 1280 1080" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arr" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title{font-size:32px;font-weight:700;fill:#0f172a}
+      .sub{font-size:16px;fill:#475569}
+      .stage{font-size:18px;font-weight:700;fill:#0f172a}
+      .fn{font-size:15px;font-weight:700;fill:#1d4ed8;font-family:Consolas,'Courier New',monospace}
+      .role{font-size:13.5px;fill:#334155}
+      .io{font-size:15px;font-weight:700;fill:#ffffff}
+      .cap{font-size:12.5px;fill:#64748b}
+      .k{font-size:13px;font-weight:700;fill:#0f172a}
+      .mono{font-family:Consolas,'Courier New',monospace;font-size:13px;fill:#334155}
+    </style>
+  </defs>
+  <rect width="1280" height="1080" fill="#f8fafc"/>
+  <rect x="0" y="0" width="1280" height="8" fill="#3b82f6"/>
+
+  <text x="56" y="62" class="title">Stage 5 &#183; Normalizer  <tspan font-size="20" fill="#3b82f6">normalizer.py</tspan></text>
+  <text x="56" y="90" class="sub">Turn messy raw rows into clean, NAMED numbers: parse figures, drop reference columns, fuzzy-match labels to the schema.</text>
+
+  <!-- input -->
+  <rect x="56" y="124" width="300" height="54" rx="10" fill="#0f172a" filter="url(#sh)"/>
+  <text x="206" y="157" text-anchor="middle" class="io">list of RawItem</text>
+  <line x1="206" y1="178" x2="206" y2="214" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <text x="56" y="206" class="cap" font-weight="700">normalize() &#183; for each raw row &#8594;</text>
+
+  <!-- step 1 match -->
+  <rect x="56" y="216" width="720" height="96" rx="12" fill="#ffffff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <text x="76" y="244" class="fn">_label_matches(label)  &#8594;  match_label()</text>
+  <text x="76" y="267" class="role">clean_label &#8594; rapidfuzz token_sort_ratio vs every synonym &#183; keep best if &#8805; 88.</text>
+  <text x="76" y="289" class="role">Appositive "&#8230;representing&#8230;" splits so one row can satisfy two metrics.</text>
+
+  <line x1="416" y1="312" x2="416" y2="344" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- step 2 filters -->
+  <rect x="56" y="346" width="720" height="78" rx="12" fill="#ffffff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <text x="76" y="374" class="k">Gatekeeping</text>
+  <text x="76" y="397" class="role"><tspan class="k">allowed_metrics</tspan> &#8212; a P&amp;L label can&#39;t match a balance-sheet metric (pipeline passes the set).</text>
+  <text x="76" y="417" class="role"><tspan class="k">side rule</tspan> &#8212; a current-side metric won&#39;t take a row stamped non-current.</text>
+
+  <line x1="416" y1="424" x2="416" y2="456" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- step 3 item_values -->
+  <rect x="56" y="458" width="720" height="104" rx="12" fill="#ffffff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <text x="76" y="486" class="fn">item_values(item)</text>
+  <text x="76" y="509" class="role">Strip a <tspan class="k">note-ref</tspan> column, then a <tspan class="k">page-ref</tspan> column (BHEL double column), then</text>
+  <text x="76" y="529" class="role"><tspan class="fn" font-size="13">parse_number</tspan> each token. values[0] = current year (leftmost); the rest are extras.</text>
+  <text x="76" y="551" class="mono">"(1,234.5)" &#8594; -1234.5   &#183;   "1,49,982" &#8594; 149982.0   &#183;   "-" &#8594; None</text>
+
+  <line x1="416" y1="562" x2="416" y2="594" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- step 4 keep best -->
+  <rect x="56" y="596" width="720" height="60" rx="12" fill="#ffffff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <text x="76" y="632" class="role">Keep the <tspan class="k">best-scoring</tspan> extraction per metric (higher fuzzy similarity wins ties).</text>
+
+  <line x1="416" y1="656" x2="416" y2="688" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+  <rect x="196" y="690" width="440" height="56" rx="10" fill="#1d4ed8" filter="url(#sh)"/>
+  <text x="416" y="724" text-anchor="middle" class="io">{ metric : Extraction(value, page, score&#8230;) }</text>
+
+  <!-- right column: helpers -->
+  <rect x="820" y="124" width="404" height="300" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="842" y="150" class="k" font-size="14">The matching vocabulary</text>
+  <text x="842" y="176" class="fn" font-size="14">clean_label(label)</text>
+  <text x="842" y="196" class="role">Lowercase, strip meaningless qualifiers:</text>
+  <text x="842" y="214" class="mono">/(loss) &#183; (used in) &#183; (note 24) &#183; "1."</text>
+  <text x="842" y="238" class="role">but <tspan class="k">keep</tspan> (current)/(non-current) &#8212; they</text>
+  <text x="842" y="256" class="role">carry real identity.</text>
+  <line x1="842" y1="276" x2="1204" y2="276" stroke="#bfdbfe" stroke-width="1.4"/>
+  <text x="842" y="302" class="fn" font-size="14">CLEANED_SYNONYMS</text>
+  <text x="842" y="322" class="role">Every schema synonym pre-cleaned once</text>
+  <text x="842" y="340" class="role">at import &#8212; matches apples to apples.</text>
+  <line x1="842" y1="360" x2="1204" y2="360" stroke="#bfdbfe" stroke-width="1.4"/>
+  <text x="842" y="386" class="k" font-size="14">MATCH_THRESHOLD = 88</text>
+  <text x="842" y="406" class="role">High enough to avoid false matches, loose</text>
+  <text x="842" y="424" class="cap">enough to absorb wording differences.</text>
+
+  <!-- right column: note ref -->
+  <rect x="820" y="440" width="404" height="306" rx="12" fill="#f0f9ff" stroke="#38bdf8" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="842" y="466" class="k" font-size="14">Reference columns are not values</text>
+  <text x="842" y="492" class="fn" font-size="14">_looks_like_note_ref</text>
+  <text x="842" y="512" class="role">"Revenue &#8230; <tspan class="k">24</tspan> &#8230; 1,49,982" &#8212; the 24 is a</text>
+  <text x="842" y="530" class="role">footnote pointer. Bare 1&#8211;2 digit int &#8594; note.</text>
+  <text x="842" y="548" class="role">3-digit only if next number ~100&#215; bigger</text>
+  <text x="842" y="566" class="role">(protects a real fx effect of 718).</text>
+  <text x="842" y="596" class="fn" font-size="14">_looks_like_page_ref</text>
+  <text x="842" y="616" class="role">A SECOND ref column (BHEL prints Note +</text>
+  <text x="842" y="634" class="role">Page). Fires only after a note ref was</text>
+  <text x="842" y="652" class="role">stripped and a real money figure follows.</text>
+  <line x1="842" y1="672" x2="1204" y2="672" stroke="#bae6fd" stroke-width="1.4"/>
+  <text x="842" y="698" class="k" font-size="13">match_label guards</text>
+  <text x="842" y="718" class="role">"Other&#8230;" &#8800; the total it resembles &#183;</text>
+  <text x="842" y="736" class="role">before/after swap (score 92) is vetoed.</text>
+
+  <!-- bottom why -->
+  <rect x="56" y="770" width="720" height="242" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.6"/>
+  <text x="78" y="798" class="stage" font-size="16" fill="#92400e">Why it&#39;s built this way</text>
+  <text x="78" y="826" class="role">&#8226;  <tspan class="k">Every wrong guess degrades to MISSING</tspan>, never to a</text>
+  <text x="78" y="846" class="role">   wrong value &#8212; a vetoed match just fails the fuzzy gate.</text>
+  <text x="78" y="874" class="role">&#8226;  <tspan class="k">token_sort_ratio</tspan> is order-independent, so "Net sales,</text>
+  <text x="78" y="894" class="role">   revenue from" matches "revenue from operations".</text>
+  <text x="78" y="922" class="role">&#8226;  <tspan class="k">Keeping (non-current)</tspan> stopped the non-current line from</text>
+  <text x="78" y="942" class="role">   shadowing the real value (the TCS/Adani/Airtel WRONGs).</text>
+  <text x="78" y="970" class="role">&#8226;  <tspan class="k">item_values is shared</tspan> with the LLM fallback, so a line</text>
+  <text x="78" y="990" class="role">   picked by either path is parsed in exactly the same way.</text>
+</svg>
