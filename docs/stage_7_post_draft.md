@@ -16,7 +16,7 @@ Status: DRAFTED & ready to publish. Includes visual diagram assets.
 `
 If an AI extracts a financial number without a receipt, an auditor cannot use it.
 
-In stages 1–6 of our Financial PDF Extraction Agent, we:
+In stages 1–6 of our Financial PDF Extraction Pipeline, we:
 1. Profiled and deskewed multi-page reports
 2. Located Consolidated vs Standalone statements
 3. Rebuilt borderless tables from raw coordinates
@@ -57,4 +57,4 @@ When AI extracts enterprise financial data, accuracy is only table stakes. Verif
 
 1. Why we built an AI extraction tool that doesn't trust what it reads.
 2. A financial number without an audit receipt is useless to an auditor.
-3. Here is how our Financial Extraction Agent delivers 100% verified numbers with audit receipts (Stage 7).
+3. Here is how our Financial Extraction Pipeline delivers 100% verified numbers with audit receipts (Stage 7).

@@ -23,7 +23,7 @@
   <rect width="1280" height="1560" fill="#f8fafc"/>
 
   <!-- Header -->
-  <text x="60" y="64" class="title">Financial PDF Extraction Agent</text>
+  <text x="60" y="64" class="title">Financial PDF Extraction Pipeline</text>
   <text x="60" y="92" class="sub">A 600-page annual report in &#8594; 28 proven financial metrics out. Read the numbers, then prove them with accounting maths.</text>
 
   <!-- READING band -->

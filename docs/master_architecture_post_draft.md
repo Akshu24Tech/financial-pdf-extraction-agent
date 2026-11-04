@@ -24,7 +24,7 @@ Why? Because LLMs love to guess. If an AI hallucinates a single digit on a $40B 
 
 So instead of burning $50 in API tokens hoping an LLM gets it right, I built a paranoid 7-stage deterministic AI agent that doesn't trust a single number until it PROVES it with math.
 
-Here’s the architecture of Financial PDF Extraction Agent (v2):
+Here’s the architecture of Financial PDF Extraction Pipeline (v2):
 
 1️⃣ Stage 1: Fast Profiler — Scans 600 pages in <1 sec with pypdf, triage-filtering corrupt/scanned pages.
 2️⃣ Stage 2: Geometry Splitter — Uses a 200-bin histogram to split dual-page A3 landscape spreads (like Airtel/Reliance) without cutting wide single tables (like BMW).
@@ -51,7 +51,7 @@ GitHub Repo: [Link in Comments]
 ## 💼 LinkedIn Profile — "Projects" Section Template
 
 **Project Name:**  
-`Financial PDF Extraction Agent — Autonomous Deterministic Accounting Engine`
+`Financial PDF Extraction Pipeline — Autonomous Deterministic Accounting Engine`
 
 **Associated with:**  
 `Independent Project / Self-Employed / Your Current Role`
@@ -60,7 +60,7 @@ GitHub Repo: [Link in Comments]
 `Jun 2026 – Present`
 
 **Project URL:**  
-`https://github.com/Akshu24Tech/financial-pdf-extraction-agent`
+`https://github.com/Akshu24Tech/financial-pdf-extraction-pipeline`
 
 **Description:**
 ```text

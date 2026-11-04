@@ -1,4 +1,4 @@
-# Work Log — Financial PDF Extraction Agent (v2)
+# Work Log — Financial PDF Extraction Pipeline (v2)
 
 Running track record: what we tried, what worked, what failed, what's next.
 Newest entries at the top. Benchmark = `benchmark.py` over the 8 test PDFs
@@ -172,7 +172,7 @@ token minted fine and the request DID reach TestPyPI (confirmed in the log:
 `repository-url: https://test.pypi.org/legacy/`). The cause was on the website,
 not in code: PyPI matches the token's CLAIMS against the registered publisher
 field-by-field, and one field didn't match. The claims GitHub sent were:
-owner `Akshu24Tech`, repo `financial-pdf-extraction-agent`, workflow file
+owner `Akshu24Tech`, repo `financial-pdf-extraction-pipeline`, workflow file
 `release.yml`, environment `testpypi`. The mismatch was PyPI's "Workflow name"
 field — it wants the FILENAME (`release.yml`), not the `name:` inside the file
 (`Release`). **Fix:** corrected the trusted-publisher registration on

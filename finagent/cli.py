@@ -19,7 +19,7 @@ def main():
     init_tracing()
     parser = argparse.ArgumentParser(
         prog="finagent",
-        description="Financial PDF Extraction Agent — Accurate extraction through verification.",
+        description="Financial PDF Extraction Pipeline — Accurate extraction through verification.",
     )
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 

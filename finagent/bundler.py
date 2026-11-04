@@ -12,7 +12,7 @@ ROOT = Path(__file__).parent.parent
 PACKAGE_DIR = ROOT / "finagent"
 TARGET_FILE = ROOT / "finagent_single.py"
 
-HEADER = '''"""finagent_single.py — the whole Financial PDF Extraction Agent in one file.
+HEADER = '''"""finagent_single.py — the whole Financial PDF Extraction Pipeline in one file.
 
 This is a portable, single-file build of the `finagent/` package. Same code,
 flattened into one module so you can drop it anywhere, paste it in a chat, or
