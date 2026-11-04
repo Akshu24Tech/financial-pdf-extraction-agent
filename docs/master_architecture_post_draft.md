@@ -22,7 +22,7 @@ It’s super confident, highly enthusiastic, but someone is going to jail. 🐶�
 
 Why? Because LLMs love to guess. If an AI hallucinates a single digit on a $40B balance sheet or misaligns a column by 2 millimeters, the whole financial model collapses.
 
-So instead of burning $50 in API tokens hoping an LLM gets it right, I built a paranoid 7-stage deterministic AI agent that doesn't trust a single number until it PROVES it with math.
+So instead of burning $50 in API tokens hoping an LLM gets it right, I built a paranoid 7-stage deterministic pipeline that doesn't trust a single number until it PROVES it with math.
 
 Here’s the architecture of Financial PDF Extraction Pipeline (v2):
 
@@ -51,7 +51,7 @@ GitHub Repo: [Link in Comments]
 ## 💼 LinkedIn Profile — "Projects" Section Template
 
 **Project Name:**  
-`Financial PDF Extraction Pipeline — Autonomous Deterministic Accounting Engine`
+`Financial PDF Extraction Pipeline — Deterministic Accounting Engine`
 
 **Associated with:**  
 `Independent Project / Self-Employed / Your Current Role`
@@ -64,7 +64,7 @@ GitHub Repo: [Link in Comments]
 
 **Description:**
 ```text
-Designed and open-sourced an autonomous, 7-stage deterministic AI data pipeline that extracts, normalizes, and mathematically validates financial metrics from complex 600-page annual reports (US GAAP, IFRS, Ind AS).
+Designed and open-sourced a 7-stage deterministic data pipeline that extracts, normalizes, and mathematically validates financial metrics from complex 600-page annual reports (US GAAP, IFRS, Ind AS).
 
 Key Engineering Highlights:
 • 100% Mathematical Proof Engine: Replaced error-prone LLM extraction with deterministic spatial parsing and accounting identity verification (A = L + E, composition sums, cross-statement cash ties).
