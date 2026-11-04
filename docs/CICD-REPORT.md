@@ -1,7 +1,7 @@
 # CI/CD — Detailed Learning Report
 
 A hands-on CI/CD pipeline built from scratch on this repo
-(`financial-pdf-extraction-agent`), once the PDF-extraction work saturated at
+(`financial-pdf-extraction-pipeline`), once the PDF-extraction work saturated at
 golden 180/180. The repo became a teaching vehicle: build a real
 continuous-integration + continuous-delivery pipeline and learn the mechanics
 by shipping it, one numbered "level" at a time.

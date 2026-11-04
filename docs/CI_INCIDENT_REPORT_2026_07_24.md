@@ -1,7 +1,7 @@
 # CI/CD Incident Report & Troubleshooting Playbook
 
 **Date:** July 24, 2026  
-**Repository:** `Akshu24Tech/financial-pdf-extraction-agent`  
+**Repository:** `Akshu24Tech/financial-pdf-extraction-pipeline`  
 **Branch:** `feat/standalone-consolidated-split`  
 **Status:** ✅ **RESOLVED & 100% GREEN** across Python 3.11, 3.12, 3.13 matrix.
 
@@ -131,12 +131,12 @@ flowchart TD
 
 #### 1. List Recent CI Runs
 ```bash
-gh run list --repo Akshu24Tech/financial-pdf-extraction-agent --limit 5
+gh run list --repo Akshu24Tech/financial-pdf-extraction-pipeline --limit 5
 ```
 
 #### 2. View Log Output for Failed Step
 ```bash
-gh run view <RUN_ID> --repo Akshu24Tech/financial-pdf-extraction-agent --log-failed
+gh run view <RUN_ID> --repo Akshu24Tech/financial-pdf-extraction-pipeline --log-failed
 ```
 
 #### 3. Common Error Types & Fixes

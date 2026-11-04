@@ -1,4 +1,4 @@
-"""finagent_single.py — the whole Financial PDF Extraction Agent in one file.
+"""finagent_single.py — the whole Financial PDF Extraction Pipeline in one file.
 
 This is a portable, single-file build of the `finagent/` package. Same code,
 flattened into one module so you can drop it anywhere, paste it in a chat, or

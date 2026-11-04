@@ -1,0 +1,91 @@
+<svg viewBox="0 0 1200 860" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arr" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title{font-size:32px;font-weight:700;fill:#0f172a}
+      .sub{font-size:16px;fill:#475569}
+      .stage{font-size:18px;font-weight:700;fill:#0f172a}
+      .fn{font-size:15px;font-weight:700;fill:#b45309;font-family:Consolas,'Courier New',monospace}
+      .role{font-size:13.5px;fill:#334155}
+      .io{font-size:14px;font-weight:700;fill:#ffffff}
+      .cap{font-size:12.5px;fill:#64748b}
+      .k{font-size:13px;font-weight:700;fill:#0f172a}
+      .step{font-size:13.5px;font-weight:600;fill:#1e293b}
+    </style>
+  </defs>
+  <rect width="1200" height="860" fill="#f8fafc"/>
+  <rect x="0" y="0" width="1200" height="8" fill="#f59e0b"/>
+
+  <text x="56" y="62" class="title">The Conductor &#183; Pipeline  <tspan font-size="20" fill="#b45309">pipeline.py</tspan></text>
+  <text x="56" y="90" class="sub">Calls the stages in order and passes each output to the next. The one file to read to see the whole story &#8212; run() is the app&#39;s entry point.</text>
+
+  <!-- run() steps as a vertical ladder -->
+  <rect x="56" y="124" width="700" height="614" rx="14" fill="#fffbeb" stroke="#f59e0b" stroke-width="2" filter="url(#sh)"/>
+  <text x="80" y="154" class="fn">run(pdf_path, out_path=None, chooser="env")</text>
+
+  <!-- step boxes -->
+  <g>
+    <rect x="80" y="172" width="652" height="46" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.4"/>
+    <text x="98" y="200" class="step">1.  profile(pdf)  &#8594;  DocProfile  +  log summary</text>
+
+    <rect x="80" y="226" width="652" height="46" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.4"/>
+    <text x="98" y="254" class="step">1b.  unit_detector  &#8594;  scale, currency, period columns</text>
+
+    <rect x="80" y="280" width="652" height="46" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.4"/>
+    <text x="98" y="308" class="step">3.  locate(doc)  +  locate_alternate(doc, primary)  &#8594;  BS / PL / CF &#215; 2 bases</text>
+
+    <rect x="80" y="334" width="652" height="120" rx="8" fill="#fefce8" stroke="#f59e0b" stroke-width="1.6"/>
+    <text x="98" y="360" class="k">4&#8211;6b.  _extract_basis(&#8230;)  &#8212; once per basis</text>
+    <text x="114" y="384" class="step">extract &#8594; normalize (allowed_metrics filter)</text>
+    <text x="114" y="406" class="step">&#8594; fill_missing (LLM fallback) &#8594; validate &#8594; derive</text>
+    <text x="114" y="430" class="cap">done statement-by-statement so a label can only match a metric on its page</text>
+
+    <rect x="80" y="462" width="652" height="46" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.4"/>
+    <text x="98" y="490" class="step">+  build Side-by-Side comparison dict (consolidated vs standalone)</text>
+
+    <rect x="80" y="516" width="652" height="46" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.4"/>
+    <text x="98" y="544" class="step">7.  write_excel(sheets)  &#8594;  output/&lt;Company&gt;_metrics.xlsx</text>
+
+    <rect x="80" y="570" width="652" height="46" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.4"/>
+    <text x="98" y="598" class="step">return the primary ValidationReport</text>
+  </g>
+
+  <text x="80" y="652" class="k">Order matters</text>
+  <text x="80" y="676" class="role">derive() runs AFTER validate() so derived values never feed the proofs.</text>
+  <text x="80" y="704" class="k">Dual basis</text>
+  <text x="80" y="728" class="role">primary (returned, keeps the golden/benchmark harness working) + alternate sheet.</text>
+
+  <!-- right: tracing + cli -->
+  <rect x="788" y="124" width="356" height="260" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="808" y="150" class="k" font-size="14">Observability  &#183;  tracing.py</text>
+  <text x="808" y="176" class="role">The whole run is wrapped in</text>
+  <text x="808" y="196" class="role"><tspan class="k">wrap_agent</tspan> + <tspan class="k">trace_span</tspan> (OpenTelemetry).</text>
+  <text x="808" y="222" class="role">Each stage is a span: pdf_profile,</text>
+  <text x="808" y="242" class="role">locate_pages, extract_basis_&#8230;,</text>
+  <text x="808" y="262" class="role">write_excel &#8212; with inputs/outputs.</text>
+  <text x="808" y="292" class="role">agent_run records status, pdf name,</text>
+  <text x="808" y="312" class="role">sheets, metric count, run time.</text>
+  <text x="808" y="344" class="cap">flush_tracing() ships it at the end.</text>
+  <text x="808" y="366" class="cap">this is what powers the eval dashboards.</text>
+
+  <rect x="788" y="400" width="356" height="150" rx="12" fill="#f0f9ff" stroke="#38bdf8" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="808" y="426" class="k" font-size="14">Run it</text>
+  <text x="808" y="454" class="role" font-family="Consolas,'Courier New',monospace" font-size="12.5">python -m finagent.pipeline &lt;pdf&gt;</text>
+  <text x="808" y="482" class="role">chooser: "env" reads FINAGENT_LLM_</text>
+  <text x="808" y="502" class="role">PROVIDER &#183; None turns the LLM off &#183;</text>
+  <text x="808" y="522" class="role">tests inject a fake chooser.</text>
+
+  <rect x="788" y="566" width="356" height="172" rx="12" fill="#fff7ed" stroke="#f59e0b" stroke-width="1.6"/>
+  <text x="808" y="592" class="stage" font-size="15" fill="#92400e">Where to start a change</text>
+  <text x="808" y="620" class="role">new metric / wording  &#8594;  schema.py</text>
+  <text x="808" y="644" class="role">number read wrong  &#8594;  geometric.py /</text>
+  <text x="808" y="662" class="role">                                   normalizer.py</text>
+  <text x="808" y="686" class="role">wrongly FLAGGED  &#8594;  validator.py</text>
+  <text x="808" y="710" class="role">statement not found  &#8594;  locator.py</text>
+  <text x="808" y="732" class="cap">then run benchmark.py to confirm the score</text>
+</svg>

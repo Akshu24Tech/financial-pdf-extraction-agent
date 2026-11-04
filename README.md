@@ -1,7 +1,7 @@
-# Financial PDF Extraction Agent (v2)
+# Financial PDF Extraction Pipeline (v2)
 
-[![CI](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/actions/workflows/ci.yml)
-[![Release](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/actions/workflows/release.yml/badge.svg)](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/releases)
+[![CI](https://github.com/Akshu24Tech/financial-pdf-extraction-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/Akshu24Tech/financial-pdf-extraction-pipeline/actions/workflows/ci.yml)
+[![Release](https://github.com/Akshu24Tech/financial-pdf-extraction-pipeline/actions/workflows/release.yml/badge.svg)](https://github.com/Akshu24Tech/financial-pdf-extraction-pipeline/releases)
 
 Give it any company's annual-report PDF. It finds the financial statements,
 pulls out the key numbers, **proves each one is correct**, and writes a tidy
@@ -139,7 +139,7 @@ pip install akshu-finagent
 ```
 
 Each `vX.Y.Z` tag also builds the wheel + sdist and attaches them to a
-[GitHub Release](https://github.com/Akshu24Tech/financial-pdf-extraction-agent/releases).
+[GitHub Release](https://github.com/Akshu24Tech/financial-pdf-extraction-pipeline/releases).
 
 ---
 

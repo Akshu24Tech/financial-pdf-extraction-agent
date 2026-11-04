@@ -1,0 +1,67 @@
+<svg viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arr" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title{font-size:32px;font-weight:700;fill:#0f172a}
+      .sub{font-size:16px;fill:#475569}
+      .stage{font-size:18px;font-weight:700;fill:#0f172a}
+      .fn{font-size:15px;font-weight:700;fill:#6d28d9;font-family:Consolas,'Courier New',monospace}
+      .role{font-size:13.5px;fill:#334155}
+      .io{font-size:15px;font-weight:700;fill:#ffffff}
+      .cap{font-size:12.5px;fill:#64748b}
+      .k{font-size:13px;font-weight:700;fill:#0f172a}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="#f8fafc"/>
+  <rect x="0" y="0" width="1200" height="8" fill="#7c3aed"/>
+
+  <text x="56" y="62" class="title">Stage 7 &#183; Writer  <tspan font-size="20" fill="#7c3aed">writer.py</tspan></text>
+  <text x="56" y="90" class="sub">Save the result as an Excel where every value carries its receipt, colour-coded by trust level.</text>
+
+  <!-- input -->
+  <rect x="56" y="128" width="300" height="54" rx="10" fill="#0f172a" filter="url(#sh)"/>
+  <text x="206" y="161" text-anchor="middle" class="io">sheets: [(name, report, ext)]</text>
+  <line x1="206" y1="182" x2="206" y2="214" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <rect x="56" y="216" width="560" height="190" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+  <text x="76" y="244" class="fn">write_excel(sheets, out_path)</text>
+  <text x="76" y="270" class="role">One worksheet per basis. For EVERY metric in the</text>
+  <text x="76" y="290" class="role">schema (even MISSING), write a row:</text>
+  <text x="76" y="314" class="role">statement &#183; metric &#183; value &#183; status &#183; <tspan class="k">page (1-based)</tspan></text>
+  <text x="76" y="336" class="role">&#183; matched label &#183; sources &#183; checks passed / failed.</text>
+  <text x="76" y="362" class="role"><tspan class="fn" font-size="13">_clean</tspan> strips illegal control bytes openpyxl refuses.</text>
+  <text x="76" y="388" class="cap">freezes the header row, sets sensible column widths</text>
+
+  <line x1="616" y1="311" x2="662" y2="311" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- sheets out -->
+  <rect x="668" y="216" width="476" height="190" rx="12" fill="#ffffff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+  <text x="688" y="244" class="k" font-size="14">output/&lt;Company&gt;_metrics.xlsx</text>
+  <rect x="688" y="260" width="140" height="34" rx="6" fill="#ede9fe"/><text x="758" y="283" text-anchor="middle" class="k" fill="#5b21b6">Consolidated</text>
+  <rect x="838" y="260" width="130" height="34" rx="6" fill="#ede9fe"/><text x="903" y="283" text-anchor="middle" class="k" fill="#5b21b6">Standalone</text>
+  <rect x="978" y="260" width="140" height="34" rx="6" fill="#ede9fe"/><text x="1048" y="283" text-anchor="middle" class="k" fill="#5b21b6">Side-by-Side</text>
+  <text x="688" y="326" class="role">Side-by-Side compares consolidated vs standalone</text>
+  <text x="688" y="346" class="role">values with their difference &#8212; one row per metric.</text>
+  <text x="688" y="378" class="cap">back-compat: a single report dict &#8594; a one-sheet "Metrics" book</text>
+
+  <!-- colour legend -->
+  <rect x="56" y="440" width="1088" height="240" rx="12" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.6"/>
+  <text x="78" y="470" class="stage" font-size="16" fill="#6d28d9">The colour language (STATUS_FILL)</text>
+  <rect x="78" y="492" width="150" height="40" rx="6" fill="#C6EFCE"/><text x="153" y="518" text-anchor="middle" class="k" fill="#14532d">VERIFIED</text>
+  <text x="244" y="518" class="role">green &#8212; passed an independent maths check.</text>
+  <rect x="78" y="542" width="150" height="40" rx="6" fill="#FFEB9C"/><text x="153" y="568" text-anchor="middle" class="k" fill="#713f12">PROBABLE</text>
+  <text x="244" y="568" class="role">yellow &#8212; extracted, nothing confirms or contradicts it.</text>
+  <rect x="78" y="592" width="150" height="40" rx="6" fill="#FFC7CE"/><text x="153" y="618" text-anchor="middle" class="k" fill="#7f1d1d">FLAGGED</text>
+  <text x="244" y="618" class="role">red &#8212; failed a check; needs a human.</text>
+  <rect x="648" y="492" width="150" height="40" rx="6" fill="#D9D9D9"/><text x="723" y="518" text-anchor="middle" class="k" fill="#334155">MISSING</text>
+  <text x="814" y="518" class="role">grey &#8212; expected but not found.</text>
+  <rect x="648" y="542" width="150" height="40" rx="6" fill="#BDD7EE"/><text x="723" y="568" text-anchor="middle" class="k" fill="#1e3a5f">DERIVED</text>
+  <text x="814" y="568" class="role">blue &#8212; computed from an identity, not extracted.</text>
+  <text x="648" y="622" class="cap">every value ships with its receipt: the label it matched,</text>
+  <text x="648" y="642" class="cap">its page, and which checks it passed or failed.</text>
+</svg>

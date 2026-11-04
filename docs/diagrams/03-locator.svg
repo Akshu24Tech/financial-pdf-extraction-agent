@@ -1,0 +1,107 @@
+<svg viewBox="0 0 1280 1060" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arr" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title{font-size:32px;font-weight:700;fill:#0f172a}
+      .sub{font-size:16px;fill:#475569}
+      .stage{font-size:18px;font-weight:700;fill:#0f172a}
+      .fn{font-size:15px;font-weight:700;fill:#1d4ed8;font-family:Consolas,'Courier New',monospace}
+      .role{font-size:13.5px;fill:#334155}
+      .io{font-size:15px;font-weight:700;fill:#ffffff}
+      .cap{font-size:12.5px;fill:#64748b}
+      .k{font-size:13px;font-weight:700;fill:#0f172a}
+      .reject{font-size:12.5px;fill:#b91c1c}
+    </style>
+  </defs>
+  <rect width="1280" height="1060" fill="#f8fafc"/>
+
+  <!-- top accent -->
+  <rect x="0" y="0" width="1280" height="8" fill="#3b82f6"/>
+  <text x="56" y="62" class="title">Stage 3 &#183; Locator  <tspan font-size="20" fill="#3b82f6">locator.py</tspan></text>
+  <text x="56" y="90" class="sub">Out of hundreds of pages, find the 3 that matter &#8212; Balance Sheet, P&amp;L, Cash Flow &#8212; and prefer the consolidated version.</text>
+
+  <!-- input -->
+  <rect x="56" y="124" width="300" height="54" rx="10" fill="#0f172a" filter="url(#sh)"/>
+  <text x="206" y="157" text-anchor="middle" class="io">DocProfile.logical_pages</text>
+
+  <!-- signatures sidebar -->
+  <rect x="820" y="124" width="404" height="300" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="842" y="150" class="fn">STATEMENT_SIGNATURES</text>
+  <text x="842" y="172" class="role">For each statement, two pattern lists:</text>
+  <text x="842" y="198" class="k">Title patterns  <tspan class="role" font-weight="400">&#8212; how it&#39;s named</tspan></text>
+  <text x="858" y="218" class="role">"balance sheet", "profit or loss"&#8230;</text>
+  <text x="842" y="244" class="k">Cue patterns  <tspan class="role" font-weight="400">&#8212; lines that belong</tspan></text>
+  <text x="858" y="264" class="role">"total assets", "operating activities"&#8230;</text>
+  <line x1="842" y1="284" x2="1204" y2="284" stroke="#bfdbfe" stroke-width="1.4"/>
+  <text x="842" y="310" class="fn" font-size="14">NUM_RE</text>
+  <text x="842" y="330" class="role">Recognises a money figure: 1,58,788</text>
+  <text x="842" y="350" class="role">or 8207.65. Counts them to tell a real</text>
+  <text x="842" y="370" class="role">statement (many) from a ToC mention.</text>
+  <text x="842" y="404" class="cap">basis stamp: consolidated / standalone / unknown</text>
+
+  <line x1="206" y1="178" x2="206" y2="214" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- loop label -->
+  <text x="56" y="206" class="cap" font-weight="700">for each statement type &#8594;</text>
+
+  <!-- score every page -->
+  <rect x="56" y="216" width="720" height="104" rx="12" fill="#ffffff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <text x="76" y="244" class="fn">_score_page(text, title_pats, cue_pats)</text>
+  <text x="76" y="266" class="role">title hits &#215;3  +  cue hits &#215;1  +  min(numbers,30)&#215;0.1</text>
+  <text x="76" y="288" class="k">_is_heading &#8594; <tspan class="role" font-weight="400">title phrase at line start (not buried in prose)  &#8594; +5 &amp; basis</tspan></text>
+  <text x="76" y="310" class="reject">reject: no title &#183; &lt;2 cues &#183; &lt;8 numbers &#183; too many distinct years (overview table)</text>
+
+  <line x1="416" y1="320" x2="416" y2="356" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- pick -->
+  <rect x="56" y="358" width="720" height="150" rx="12" fill="#ffffff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <text x="76" y="386" class="fn">_pick(scored, &#8230;)</text>
+  <text x="76" y="410" class="role">1. Prefer <tspan class="k">heading-titled</tspan> pages (a notes page saying "consolidated" can&#39;t hijack).</text>
+  <text x="76" y="432" class="role">2. Prefer <tspan class="k">consolidated</tspan> within that tier.</text>
+  <text x="76" y="454" class="role">3. Sort by score; ties &#8594; the <tspan class="k">earlier</tspan> page (statement precedes its echoing notes).</text>
+  <text x="76" y="476" class="role">4. <tspan class="fn" font-size="13">verify_page</tspan>: &#8805;2 numeric columns + &#8805;5 extractable rows (dry run).</text>
+  <text x="76" y="498" class="role">5. <tspan class="fn" font-size="13">_is_continuation</tspan>: pull in adjacent pages the statement spills onto.</text>
+
+  <line x1="416" y1="508" x2="416" y2="544" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- output -->
+  <rect x="216" y="546" width="400" height="56" rx="10" fill="#1d4ed8" filter="url(#sh)"/>
+  <text x="416" y="580" text-anchor="middle" class="io">Location(statement, basis, pages, score)</text>
+
+  <!-- entry points row -->
+  <rect x="56" y="650" width="380" height="150" rx="12" fill="#f0f9ff" stroke="#38bdf8" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="76" y="678" class="fn" fill="#0369a1">locate(doc)</text>
+  <text x="76" y="702" class="role">Primary selection for BS / PL / CF,</text>
+  <text x="76" y="722" class="role">prefers consolidated.</text>
+  <text x="76" y="752" class="k">Returns {BS, PL, CF}</text>
+  <text x="76" y="774" class="cap">the main entry point</text>
+
+  <rect x="456" y="650" width="380" height="150" rx="12" fill="#f0f9ff" stroke="#38bdf8" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="476" y="678" class="fn" fill="#0369a1">locate_alternate(doc, primary)</text>
+  <text x="476" y="702" class="role">Finds the OTHER basis (standalone</text>
+  <text x="476" y="722" class="role">if primary was consolidated), distinct</text>
+  <text x="476" y="742" class="role">pages &#8212; so both can be shown side</text>
+  <text x="476" y="762" class="role">by side. Falls back to combined</text>
+  <text x="476" y="782" class="role">multi-column tables.</text>
+
+  <rect x="856" y="650" width="368" height="150" rx="12" fill="#f0f9ff" stroke="#38bdf8" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="876" y="678" class="fn" fill="#0369a1">has_pages(locations)</text>
+  <text x="876" y="702" class="role">True if any statement in this basis</text>
+  <text x="876" y="722" class="role">resolved to real pages.</text>
+  <text x="876" y="752" class="cap">the pipeline uses this to decide</text>
+  <text x="876" y="772" class="cap">whether to add the alternate sheet.</text>
+
+  <!-- why callout -->
+  <rect x="56" y="836" width="1168" height="176" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.6"/>
+  <text x="78" y="864" class="stage" font-size="16" fill="#92400e">Why it&#39;s built this way</text>
+  <text x="78" y="892" class="role">&#8226;  <tspan class="k">Position beats length.</tspan> A prose sentence ("&#8230;reviewed at each balance sheet date&#8230;") mentions the title mid-line; a real heading starts with it.</text>
+  <text x="78" y="916" class="role">&#8226;  <tspan class="k">The decimal shape in NUM_RE is essential</tspan> &#8212; crore reports have small 4-digit decimals; BHEL&#39;s whole P&amp;L scored 0 without it.</text>
+  <text x="78" y="940" class="role">&#8226;  <tspan class="k">Only adjacent pages</tspan> are merged as continuations &#8212; a distant page that also scores is a different copy (standalone / prior year).</text>
+  <text x="78" y="964" class="role">&#8226;  <tspan class="k">Kerning fallback</tspan> (_search): PDF text layers split words ("BAL ANCE SHEET"), so a failed search retries with all spaces removed.</text>
+  <text x="78" y="988" class="role">&#8226;  <tspan class="k">Condensed / Summarised / Abridged</tspan> headings are management summaries &#8212; they get no heading boost and no basis authority.</text>
+</svg>

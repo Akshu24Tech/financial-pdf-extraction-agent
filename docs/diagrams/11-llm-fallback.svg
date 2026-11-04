@@ -1,0 +1,80 @@
+<svg viewBox="0 0 1280 900" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arr" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title{font-size:32px;font-weight:700;fill:#0f172a}
+      .sub{font-size:16px;fill:#475569}
+      .stage{font-size:18px;font-weight:700;fill:#0f172a}
+      .fn{font-size:15px;font-weight:700;fill:#7c3aed;font-family:Consolas,'Courier New',monospace}
+      .role{font-size:13.5px;fill:#334155}
+      .io{font-size:14px;font-weight:700;fill:#ffffff}
+      .cap{font-size:12.5px;fill:#64748b}
+      .k{font-size:13px;font-weight:700;fill:#0f172a}
+    </style>
+  </defs>
+  <rect width="1280" height="900" fill="#f8fafc"/>
+  <rect x="0" y="0" width="1280" height="8" fill="#a855f7"/>
+
+  <text x="56" y="62" class="title">Stage 6a &#183; LLM Fallback  <tspan font-size="20" fill="#7c3aed">llm_fallback.py</tspan></text>
+  <text x="56" y="90" class="sub">For metrics still MISSING after the rules: the LLM PROPOSES a line, the validator DECIDES. Off by default &#8212; a model error never fails the run.</text>
+
+  <!-- flow across top -->
+  <rect x="56" y="128" width="210" height="58" rx="10" fill="#D9D9D9" filter="url(#sh)"/>
+  <text x="161" y="153" text-anchor="middle" class="k" fill="#334155">MISSING metric</text>
+  <text x="161" y="173" text-anchor="middle" class="cap">after rule extraction</text>
+  <line x1="266" y1="157" x2="306" y2="157" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <rect x="310" y="128" width="250" height="58" rx="10" fill="#faf5ff" stroke="#a855f7" stroke-width="2" filter="url(#sh)"/>
+  <text x="435" y="152" text-anchor="middle" class="fn" font-size="14">chooser.choose()</text>
+  <text x="435" y="173" text-anchor="middle" class="cap">LLM returns a LINE ID, not a number</text>
+  <line x1="560" y1="157" x2="600" y2="157" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <rect x="604" y="128" width="250" height="58" rx="10" fill="#faf5ff" stroke="#a855f7" stroke-width="2" filter="url(#sh)"/>
+  <text x="729" y="152" text-anchor="middle" class="k" fill="#6d28d9">read value from that line</text>
+  <text x="729" y="173" text-anchor="middle" class="cap">via item_values &#8212; same code as rules</text>
+  <line x1="854" y1="157" x2="894" y2="157" stroke="#64748b" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <rect x="898" y="128" width="326" height="58" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#sh)"/>
+  <text x="1061" y="152" text-anchor="middle" class="k" fill="#15803d">validator must confirm it</text>
+  <text x="1061" y="173" text-anchor="middle" class="cap">VERIFIED by a check with a rule value</text>
+
+  <!-- fill_missing -->
+  <rect x="56" y="216" width="700" height="250" rx="12" fill="#faf5ff" stroke="#a855f7" stroke-width="2" filter="url(#sh)"/>
+  <text x="76" y="244" class="fn">fill_missing(observations, raw_by_statement, &#8230;)</text>
+  <text x="76" y="270" class="role">1.  Baseline validate with rules only. Chooser None &#8594; return unchanged.</text>
+  <text x="76" y="294" class="role">2.  Show the LLM the numbered lines of the located page, ask ONE</text>
+  <text x="96" y="314" class="role">question per MISSING metric: "which line is this?" (<tspan class="fn" font-size="13">build_prompt</tspan>).</text>
+  <text x="76" y="338" class="role">3.  <tspan class="k">Prune loop</tspan>: drop any proposal not VERIFIED by a check involving a</text>
+  <text x="96" y="358" class="role">rule value &#8212; repeat until stable (removing one can unverify others).</text>
+  <text x="76" y="382" class="role">4.  <tspan class="k">Safety veto</tspan>: if the kept set would newly FLAG a rule value, drop ALL.</text>
+  <text x="76" y="406" class="role">5.  Accept survivors as VERIFIED with source "llm".</text>
+  <text x="76" y="440" class="cap">_proven_by_rules: two LLM picks agreeing only with each other don&#39;t count</text>
+
+  <!-- providers -->
+  <rect x="788" y="216" width="436" height="250" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="808" y="244" class="k" font-size="14">Providers (one-method interface)</text>
+  <text x="808" y="272" class="fn" font-size="14">GeminiChooser</text>
+  <text x="808" y="292" class="role">gemini-2.5-flash, JSON response schema, temp 0.</text>
+  <text x="808" y="320" class="fn" font-size="14">GroqChooser</text>
+  <text x="808" y="340" class="role">llama-3.3-70b, json_object response, temp 0.</text>
+  <line x1="808" y1="362" x2="1204" y2="362" stroke="#ddd6fe" stroke-width="1.4"/>
+  <text x="808" y="388" class="fn" font-size="14">chooser_from_env()</text>
+  <text x="808" y="408" class="role">FINAGENT_LLM_PROVIDER = gemini | groq</text>
+  <text x="808" y="428" class="role">+ GEMINI_API_KEY / GROQ_API_KEY</text>
+  <text x="808" y="452" class="cap">unset &#8594; None &#8594; fallback off, pipeline unchanged</text>
+
+  <!-- guarantees -->
+  <rect x="56" y="498" width="1168" height="238" rx="12" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.6"/>
+  <text x="78" y="528" class="stage" font-size="17" fill="#6d28d9">Five guarantees, not hopes</text>
+  <text x="78" y="560" class="role">&#8226;  <tspan class="k">The LLM returns a line id, never a figure</tspan> &#8212; the value is read off the page by the same parser the rules use. It cannot invent a number.</text>
+  <text x="78" y="588" class="role">&#8226;  <tspan class="k">A wrong line is caught by the accounting identities</tspan> &#8212; a proposal is accepted only if a check including a rule-extracted value verifies it.</text>
+  <text x="78" y="616" class="role">&#8226;  <tspan class="k">A proposal must not break anything</tspan> &#8212; if adding it would FLAG a value the rules already found, it is dropped.</text>
+  <text x="78" y="644" class="role">&#8226;  <tspan class="k">Every accepted value shows source "llm"</tspan> &#8212; an unchecked LLM value is never shown, not even as PROBABLE.</text>
+  <text x="78" y="672" class="role">&#8226;  <tspan class="k">Off by default</tspan> &#8212; no provider configured behaves exactly as before; any LLM error leaves the metric MISSING and the run succeeds.</text>
+  <text x="78" y="710" class="cap">the design principle: the LLM widens recall, the validator guards precision &#8212; the model can only ever help, never corrupt.</text>
+</svg>
